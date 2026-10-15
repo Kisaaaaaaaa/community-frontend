@@ -1,0 +1,86 @@
+// 全局样式统一入口
+// 引入顺序：变量 -> 重置 -> 响应式 -> 通用工具类
+
+@use './variables.scss';
+@use './reset.scss';
+@use './responsive.scss';
+
+// ============================================================
+// 通用工具类
+// ============================================================
+
+// 文本对齐
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+
+// Flex 布局快捷类
+.flex {
+  display: flex;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// 间距快捷类
+.mt-sm {
+  margin-top: var(--space-sm);
+}
+.mt-md {
+  margin-top: var(--space-md);
+}
+.mt-lg {
+  margin-top: var(--space-lg);
+}
+.mb-sm {
+  margin-bottom: var(--space-sm);
+}
+.mb-md {
+  margin-bottom: var(--space-md);
+}
+.mb-lg {
+  margin-bottom: var(--space-lg);
+}
+.p-md {
+  padding: var(--space-md);
+}
+.p-lg {
+  padding: var(--space-lg);
+}
+
+// 卡片容器
+.card-box {
+  background-color: var(--card-bg-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+// 适老化：大号按钮辅助类
+.btn-accessible {
+  min-height: 44px; // 移动端推荐最小可点击区域
+  font-size: var(--font-size-base);
+}
+
+// 路由过渡动画
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

@@ -1,0 +1,54 @@
+// ============================================================
+// 响应式断点系统
+// 通过 SCSS mixin 统一管理断点，支持 PC 端与移动端
+// ============================================================
+
+// 断点定义（移动优先：从小到大覆盖）
+// xs: 手机竖屏 <= 768px
+// sm: 手机横屏 / 小平板 <= 992px
+// md: 平板 <= 1200px
+// lg: 桌面 > 1200px
+$breakpoints: (
+  'xs': (
+    max-width: 768px,
+  ),
+  'sm': (
+    max-width: 992px,
+  ),
+  'md': (
+    max-width: 1200px,
+  ),
+  'lg': (
+    min-width: 1201px,
+  ),
+);
+
+// 响应式 mixin 用法：
+// @include respond-to('xs') { ... }
+@mixin respond-to($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @media #{map-get($breakpoints, $breakpoint)} {
+      @content;
+    }
+  } @else {
+    @warn "未知断点：#{$breakpoint}";
+  }
+}
+
+// ============================================================
+// 移动端适配工具类
+// 在全局样式中提供 .is-mobile / .is-pc 的条件样式
+// 由 useResponsive 监听窗口宽度动态切换根 class
+// ============================================================
+.is-mobile {
+  // 移动端隐藏侧边栏、放大可点击区域
+  .hidden-mobile {
+    display: none !important;
+  }
+}
+
+.is-pc {
+  .hidden-pc {
+    display: none !important;
+  }
+}

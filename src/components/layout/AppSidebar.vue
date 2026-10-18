@@ -28,6 +28,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/store/app'
+import { useUserStore } from '@/store/user'
 import { Box, HomeFilled, InfoFilled } from '@element-plus/icons-vue'
 
 defineProps({
@@ -39,10 +40,11 @@ defineProps({
 
 const route = useRoute()
 const appStore = useAppStore()
+const userStore = useUserStore()
 
-// 当前激活的菜单项（工具审核页归属工具列表菜单）
+// 当前激活的菜单项（工具审核页不在菜单中，归属工具列表高亮）
 const activeMenu = computed(() =>
-  route.path.startsWith('/tools') ? '/tools' : route.path
+  route.path === '/tools/audit' ? '/tools' : route.path
 )
 
 // 移动端选中后关闭抽屉

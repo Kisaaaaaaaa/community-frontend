@@ -18,3 +18,12 @@ export function auditTool(toolCode, data) {
     data
   })
 }
+
+// 工具录入 ：录入后进入待审核（PENDING）状态
+export function createTool(data) {
+  return request({
+    url: '/tools',
+    method: 'post',
+    data
+  })
+}

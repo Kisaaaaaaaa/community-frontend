@@ -83,10 +83,29 @@
                 </el-tag>
                 <span class="deposit">押金 ¥{{ formatAmount(tool.depositAmount) }}</span>
               </div>
-              <!-- 仅管理员可审核，且仅「待审核」的工具展示审核入口 -->
-              <div v-if="isAdmin && tool.auditStatus === 'PENDING'" class="tool-actions">
-                <el-button type="primary" plain class="btn-accessible" @click="openAudit(tool)">
+              <!-- 管理员操作：待审核工具可审核，可用状态工具可删除（确认弹窗） -->
+              <div
+                v-if="isAdmin && (tool.auditStatus === 'PENDING' || tool.status === 'AVAILABLE')"
+                class="tool-actions"
+              >
+                <el-button
+                  v-if="tool.auditStatus === 'PENDING'"
+                  type="primary"
+                  plain
+                  class="btn-accessible"
+                  @click="openAudit(tool)"
+                >
                   审核
+                </el-button>
+                <el-button
+                  v-if="tool.status === 'AVAILABLE'"
+                  type="danger"
+                  plain
+                  class="btn-accessible"
+                  :loading="deletingCode === tool.toolCode"
+                  @click="handleDelete(tool)"
+                >
+                  删除
                 </el-button>
               </div>
             </div>
@@ -298,9 +317,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Picture, Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { uploadImage } from '@/api/file'
-import { auditTool, createTool, getToolList } from '@/api/tool'
+import { auditTool, createTool, deleteTool, getToolList } from '@/api/tool'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
@@ -442,6 +461,32 @@ async function handleAuditSubmit() {
     // 失败原因已由请求拦截器统一弹出（如：工具当前审核状态不允许审核）
   } finally {
     auditing.value = false
+  }
+}
+
+// ---------- 工具删除 ----------
+// 仅 tool_status 为 AVAILABLE 的工具可删除；已删除工具后端已过滤，不会出现在列表
+const deletingCode = ref('')
+
+async function handleDelete(tool) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除工具「${tool.toolName}」（${tool.toolCode}）吗？删除后列表不再展示，历史记录仍可追溯。`,
+      '删除工具',
+      { type: 'warning', confirmButtonText: '确定', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  deletingCode.value = tool.toolCode
+  try {
+    await deleteTool(tool.toolCode)
+    ElMessage.success('工具已删除')
+    fetchList()
+  } catch {
+    // 失败原因已由请求拦截器统一弹出（如：工具存在进行中业务，不允许删除）
+  } finally {
+    deletingCode.value = ''
   }
 }
 

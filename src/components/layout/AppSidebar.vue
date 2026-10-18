@@ -42,10 +42,8 @@ const route = useRoute()
 const appStore = useAppStore()
 const userStore = useUserStore()
 
-// 当前激活的菜单项（工具审核页不在菜单中，归属工具列表高亮）
-const activeMenu = computed(() =>
-  route.path === '/tools/audit' ? '/tools' : route.path
-)
+// 当前激活的菜单项
+const activeMenu = computed(() => route.path)
 
 // 移动端选中后关闭抽屉
 const onMenuSelect = () => {

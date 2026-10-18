@@ -28,10 +28,10 @@ export default defineConfig({
     port: 5173,
     open: true,
     proxy: {
+      // 后端统一挂载 /api/v1，直接透传（含图片地址 /api/v1/files/...）
       '/api': {
         target: 'http://localhost:8080',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        changeOrigin: true
       }
     }
   },

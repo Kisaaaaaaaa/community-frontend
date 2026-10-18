@@ -83,9 +83,9 @@
                 </el-tag>
                 <span class="deposit">押金 ¥{{ formatAmount(tool.depositAmount) }}</span>
               </div>
-              <!-- 仅管理员展示审核入口，跳转工具审核流程 -->
-              <div v-if="isAdmin" class="tool-actions">
-                <el-button type="primary" plain class="btn-accessible" @click="goAudit(tool)">
+              <!-- 仅管理员可审核，且仅「待审核」的工具展示审核入口 -->
+              <div v-if="isAdmin && tool.auditStatus === 'PENDING'" class="tool-actions">
+                <el-button type="primary" plain class="btn-accessible" @click="openAudit(tool)">
                   审核
                 </el-button>
               </div>
@@ -244,19 +244,65 @@
         <el-button type="primary" :loading="submitting" @click="handleCreateSubmit">提交录入</el-button>
       </template>
     </el-dialog>
+
+    <!-- 工具审核弹窗（4.2.2，仅管理员） -->
+    <el-dialog v-model="auditVisible" title="工具审核" width="560px" destroy-on-close>
+      <el-descriptions :column="2" border size="small" class="mb-md">
+        <el-descriptions-item label="工具编码" :span="2">
+          {{ auditTarget?.toolCode }}
+        </el-descriptions-item>
+        <el-descriptions-item label="工具名称">{{ auditTarget?.toolName }}</el-descriptions-item>
+        <el-descriptions-item label="类别">{{ categoryLabel(auditTarget?.category) }}</el-descriptions-item>
+        <el-descriptions-item label="型号规格" :span="2">{{ auditTarget?.modelSpec || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="押金（元）">¥{{ formatAmount(auditTarget?.depositAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="当前状态">{{ statusLabel(auditTarget?.status) }}</el-descriptions-item>
+      </el-descriptions>
+      <el-form
+        ref="auditFormRef"
+        :model="auditForm"
+        :rules="auditRules"
+        label-width="90px"
+        @submit.prevent
+      >
+        <el-form-item label="审核结果" prop="auditStatus">
+          <el-radio-group v-model="auditForm.auditStatus">
+            <el-radio value="APPROVED">审核通过</el-radio>
+            <el-radio value="REJECTED">需修改</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item
+          v-if="auditForm.auditStatus === 'REJECTED'"
+          label="修改意见"
+          prop="auditRemark"
+        >
+          <el-input
+            v-model="auditForm.auditRemark"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请填写需修改的内容，录入人将按此更正后重新提交"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="auditVisible = false">取消</el-button>
+        <el-button type="primary" :loading="auditing" @click="handleAuditSubmit">
+          提交审核结果
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { Picture, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { uploadImage } from '@/api/file'
-import { createTool, getToolList } from '@/api/tool'
+import { auditTool, createTool, getToolList } from '@/api/tool'
 import { useUserStore } from '@/store/user'
 
-const router = useRouter()
 const userStore = useUserStore()
 
 // 管理员可见「审核」操作，工作人员可见「录入工具」入口
@@ -348,9 +394,55 @@ function handleReset() {
   handleSearch()
 }
 
-// 跳转工具审核流程（4.2.2）
-function goAudit(row) {
-  router.push({ path: '/tools/audit', query: { toolCode: row.toolCode } })
+// ---------- 工具审核弹窗（4.2.2，仅管理员） ----------
+const auditVisible = ref(false)
+const auditing = ref(false)
+const auditFormRef = ref()
+const auditTarget = ref(null)
+const auditForm = reactive({ auditStatus: 'APPROVED', auditRemark: '' })
+
+// 驳回时修改意见必填（与后端校验一致）
+const auditRules = {
+  auditRemark: [{ required: true, message: '请填写修改意见', trigger: 'blur' }]
+}
+
+// 打开审核弹窗
+function openAudit(tool) {
+  auditTarget.value = tool
+  auditForm.auditStatus = 'APPROVED'
+  auditForm.auditRemark = ''
+  auditVisible.value = true
+}
+
+// 提交审核（PUT /tools/{toolCode}/audit）
+async function handleAuditSubmit() {
+  // 驳回时先校验修改意见；通过时无需校验（修改意见不渲染）
+  if (auditForm.auditStatus === 'REJECTED') {
+    try {
+      await auditFormRef.value.validate()
+    } catch {
+      return
+    }
+  }
+  auditing.value = true
+  try {
+    await auditTool(auditTarget.value.toolCode, {
+      auditStatus: auditForm.auditStatus,
+      auditRemark:
+        auditForm.auditStatus === 'REJECTED' ? auditForm.auditRemark.trim() : undefined
+    })
+    auditVisible.value = false
+    ElMessage.success(
+      auditForm.auditStatus === 'APPROVED'
+        ? '审核通过，工具已开放预约'
+        : '已驳回，等待录入人修改后重新提交'
+    )
+    fetchList()
+  } catch {
+    // 失败原因已由请求拦截器统一弹出（如：工具当前审核状态不允许审核）
+  } finally {
+    auditing.value = false
+  }
 }
 
 // ---------- 工具录入弹窗（4.2.1） ----------

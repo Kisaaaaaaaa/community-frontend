@@ -35,12 +35,6 @@ const routes = [
         meta: { title: '工具列表' }
       },
       {
-        path: 'tools/audit',
-        name: 'ToolAudit',
-        component: () => import('@/views/tools/audit.vue'),
-        meta: { title: '工具审核' }
-      },
-      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/profile/index.vue'),

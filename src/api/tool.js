@@ -27,3 +27,11 @@ export function createTool(data) {
     data
   })
 }
+
+// 逻辑删除工具：仅 tool_status 为 AVAILABLE 时允许删除
+export function deleteTool(toolCode) {
+  return request({
+    url: `/tools/${toolCode}`,
+    method: 'delete'
+  })
+}

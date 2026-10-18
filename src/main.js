@@ -7,6 +7,10 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 // Element Plus 暗黑模式样式（按需，此处预留）
 import 'element-plus/theme-chalk/dark/css-vars.css'
 
+// JS 函数式调用的组件按需插件不会自动注入样式，需手动引入
+import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
+
 // 全局样式
 import '@/assets/styles/index.scss'
 

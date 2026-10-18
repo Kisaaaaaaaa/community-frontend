@@ -55,7 +55,7 @@ import { useAppStore } from '@/store/app'
 import { useResponsive } from '@/utils/responsive'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
-import { HomeFilled, InfoFilled } from '@element-plus/icons-vue'
+import { HomeFilled, InfoFilled, Box } from '@element-plus/icons-vue'
 
 const appStore = useAppStore()
 const { isMobile } = useResponsive()
@@ -63,6 +63,7 @@ const { isMobile } = useResponsive()
 // 底部导航菜单项（与路由 children 对应）
 const menuItems = computed(() => [
   { path: '/home', title: '首页', icon: HomeFilled },
+  { path: '/tools', title: '工具', icon: Box },
   { path: '/about', title: '关于', icon: InfoFilled }
 ])
 </script>

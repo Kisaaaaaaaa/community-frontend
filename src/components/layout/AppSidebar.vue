@@ -12,6 +12,10 @@
         <el-icon><HomeFilled /></el-icon>
         <template #title>首页</template>
       </el-menu-item>
+      <el-menu-item index="/tools">
+        <el-icon><Box /></el-icon>
+        <template #title>工具列表</template>
+      </el-menu-item>
       <el-menu-item index="/about">
         <el-icon><InfoFilled /></el-icon>
         <template #title>关于平台</template>
@@ -24,7 +28,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/store/app'
-import { HomeFilled, InfoFilled } from '@element-plus/icons-vue'
+import { Box, HomeFilled, InfoFilled } from '@element-plus/icons-vue'
 
 defineProps({
   inDrawer: {
@@ -36,8 +40,10 @@ defineProps({
 const route = useRoute()
 const appStore = useAppStore()
 
-// 当前激活的菜单项
-const activeMenu = computed(() => route.path)
+// 当前激活的菜单项（工具审核页归属工具列表菜单）
+const activeMenu = computed(() =>
+  route.path.startsWith('/tools') ? '/tools' : route.path
+)
 
 // 移动端选中后关闭抽屉
 const onMenuSelect = () => {

@@ -10,7 +10,7 @@ import {
 
 // 创建 axios 实例
 const service = axios.create({
-  baseURL: '/api', // 统一前缀，由 vite 代理转发到后端
+  baseURL: '/api/v1', // 统一前缀，由 vite 代理转发到后端（后端挂载于 /api/v1）
   timeout: 15000
 })
 
@@ -40,7 +40,7 @@ function refreshAccessToken() {
   if (!refreshPromise) {
     // 使用原生 axios 调用，绕过拦截器避免递归
     refreshPromise = axios
-      .post('/api/auth/refresh', { refreshToken: refresh })
+      .post('/api/v1/auth/refresh', { refreshToken: refresh })
       .then(({ data }) => {
         if (data?.code !== 0 || !data?.data?.accessToken) {
           throw new Error(data?.message || '刷新令牌无效或已过期')

@@ -1,6 +1,6 @@
 <template>
   <div class="auth-page">
-    <div class="auth-card">
+    <div class="auth-card" :class="{ shake: shaking }">
       <!-- 品牌区 -->
       <div class="auth-brand">
         <el-icon :size="40" color="#409eff"><HomeFilled /></el-icon>
@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { HomeFilled, Iphone, Lock, LocationInformation, User } from '@element-plus/icons-vue'
@@ -111,6 +111,19 @@ const userStore = useUserStore()
 
 const formRef = ref()
 const loading = ref(false)
+const shaking = ref(false)
+let shakeTimer = null
+
+// 触发卡片抖动动效（校验失败或注册失败时）
+async function triggerShake() {
+  shaking.value = false
+  await nextTick()
+  shaking.value = true
+  clearTimeout(shakeTimer)
+  shakeTimer = setTimeout(() => {
+    shaking.value = false
+  }, 500)
+}
 
 const form = reactive({
   role: 'resident', // resident：居民；staff：社区工作人员
@@ -159,6 +172,8 @@ async function handleRegister() {
   try {
     await formRef.value.validate()
   } catch {
+    // 字段校验不通过：抖动提醒（字段下方同时显示错误文案）
+    triggerShake()
     return
   }
 
@@ -189,7 +204,8 @@ async function handleRegister() {
     }
     router.replace('/login')
   } catch {
-    // 具体错误提示由请求拦截器统一处理
+    // 注册失败：请求拦截器已弹出错误提示，这里补一个抖动反馈
+    triggerShake()
   } finally {
     loading.value = false
   }
@@ -224,6 +240,18 @@ async function handleRegister() {
   border-radius: var(--radius-lg);
   padding: var(--space-xl) var(--space-lg);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+// 注册失败时的抖动动效
+.auth-card.shake {
+  animation: card-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes card-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-6px); }
+  40%, 60% { transform: translateX(6px); }
 }
 
 .auth-brand {

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Layout from '@/components/layout/index.vue'
-import { getAccessToken } from '@/utils/auth'
+import { getAccessToken, getUserInfo, normalizeRole } from '@/utils/auth'
 
 // 静态路由：登录/注册 + 布局页面
 const routes = [
@@ -41,6 +41,18 @@ const routes = [
         meta: { title: '工具审核' }
       },
       {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('@/views/profile/index.vue'),
+        meta: { title: '个人主页' }
+      },
+      {
+        path: 'admin/users',
+        name: 'AdminUsers',
+        component: () => import('@/views/admin/users.vue'),
+        meta: { title: '用户管理', roles: ['ADMIN'] }
+      },
+      {
         path: 'about',
         name: 'About',
         component: () => import('@/views/about/index.vue'),
@@ -75,6 +87,12 @@ router.beforeEach((to, from, next) => {
   // 需要登录的页面：未登录则跳转登录页，并记录来源用于登录后回跳
   if (to.meta.requiresAuth && !token) {
     next({ path: '/login', query: { redirect: to.fullPath } })
+    return
+  }
+
+  // 角色权限：限定角色的页面（如管理员专属）拦截回首页
+  if (to.meta.roles && !to.meta.roles.includes(normalizeRole(getUserInfo()?.role))) {
+    next('/home')
     return
   }
 

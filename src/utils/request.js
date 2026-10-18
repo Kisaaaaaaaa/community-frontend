@@ -32,6 +32,10 @@ service.interceptors.request.use(
 // ============================================================
 let refreshPromise = null
 
+// 与令牌相关、需要「刷新令牌或重新登录」的业务码
+// 其它业务码（如 40107 原密码不正确）即使伴随 HTTP 401，也不应触发刷新或退出登录
+const TOKEN_ERROR_CODES = [40101, 40102, 40106]
+
 function refreshAccessToken() {
   const refresh = getRefreshToken()
   if (!refresh) {
@@ -89,6 +93,15 @@ service.interceptors.response.use(
   },
   async (error) => {
     const { response, config } = error
+
+    const bizCode = response?.data?.code
+
+    // HTTP 401 但携带「非令牌类」业务码（如 40107 原密码不正确）：属于业务错误，
+    // 直接提示即可，不刷新令牌、不退出登录
+    if (response?.status === 401 && bizCode !== undefined && !TOKEN_ERROR_CODES.includes(bizCode)) {
+      ElMessage.error(response.data?.message || '请求失败')
+      return Promise.reject(error)
+    }
 
     // HTTP 401：访问令牌过期，尝试用刷新令牌换发并重放原请求（仅重试一次）
     if (response?.status === 401 && config && !config._retry && getRefreshToken()) {

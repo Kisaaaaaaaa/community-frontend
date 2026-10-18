@@ -19,17 +19,18 @@
 
       <!-- 右侧：用户区域 -->
       <div class="header-right">
-        <el-dropdown trigger="click">
+        <el-dropdown trigger="click" @command="handleCommand">
           <span class="user-info">
-            <el-avatar :size="32" class="user-avatar">居</el-avatar>
-            <span class="user-name hidden-mobile">居民用户</span>
+            <el-avatar :size="32" class="user-avatar">{{ avatarText }}</el-avatar>
+            <span class="user-name hidden-mobile">{{ userStore.realName || userStore.roleLabel }}</span>
             <el-icon><ArrowDown /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
+              <el-dropdown-item disabled>{{ userStore.roleLabel }}</el-dropdown-item>
               <el-dropdown-item>个人中心</el-dropdown-item>
               <el-dropdown-item>我的消息</el-dropdown-item>
-              <el-dropdown-item divided>退出登录</el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -39,12 +40,30 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useAppStore } from '@/store/app'
+import { useUserStore } from '@/store/user'
 import { Menu, Fold, Expand, HomeFilled, ArrowDown } from '@element-plus/icons-vue'
 
 const appStore = useAppStore()
+const userStore = useUserStore()
+const router = useRouter()
 const { isMobile } = storeToRefs(appStore)
+
+// 头像展示姓名首字
+const avatarText = computed(() => (userStore.realName || userStore.roleLabel || '用户').charAt(0))
+
+// 下拉菜单命令处理
+async function handleCommand(command) {
+  if (command === 'logout') {
+    await userStore.logout()
+    ElMessage.success('已退出登录')
+    router.replace('/login')
+  }
+}
 </script>
 
 <style lang="scss" scoped>

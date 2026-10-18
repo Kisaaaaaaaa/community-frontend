@@ -28,7 +28,7 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item disabled>{{ userStore.roleLabel }}</el-dropdown-item>
-              <el-dropdown-item>个人中心</el-dropdown-item>
+              <el-dropdown-item command="profile">个人主页</el-dropdown-item>
               <el-dropdown-item>我的消息</el-dropdown-item>
               <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
@@ -58,6 +58,10 @@ const avatarText = computed(() => (userStore.realName || userStore.roleLabel || 
 
 // 下拉菜单命令处理
 async function handleCommand(command) {
+  if (command === 'profile') {
+    router.push('/profile')
+    return
+  }
   if (command === 'logout') {
     await userStore.logout()
     ElMessage.success('已退出登录')

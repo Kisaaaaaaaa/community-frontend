@@ -50,6 +50,12 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 更新本地用户信息（个人资料修改成功后调用，用于同步顶栏显示）
+  function updateUserInfo(partial = {}) {
+    userInfo.value = { ...(userInfo.value || {}), ...partial }
+    persistUserInfo(userInfo.value)
+  }
+
   // 重置为未登录状态
   function resetAuth() {
     accessToken.value = ''
@@ -89,6 +95,7 @@ export const useUserStore = defineStore('user', () => {
     realName,
     roleLabel: computed(() => getRoleLabel(role.value)),
     applyAuth,
+    updateUserInfo,
     resetAuth,
     login,
     logout,

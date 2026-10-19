@@ -56,7 +56,7 @@ const routes = [
         path: 'reservations/create',
         name: 'ReservationCreate',
         component: () => import('@/views/reservation/create.vue'),
-        meta: { title: '创建预约', roles: ['RESIDENT', 'STAFF'] }
+        meta: { title: '创建预约', roles: ['RESIDENT'] }
       },
       {
         path: 'reservations/manage',

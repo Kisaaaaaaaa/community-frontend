@@ -59,6 +59,16 @@
           </div>
         </div>
 
+        <!-- 待缴费：缴费截止倒计时 -->
+        <div
+          v-if="item.status === 'WAIT_PAY' && item.payDeadline"
+          class="pay-countdown"
+          :class="deadlineClass(item.payDeadline)"
+        >
+          <el-icon><Timer /></el-icon>
+          <span>缴费截止：{{ item.payDeadline }}（{{ payCountdown(item.payDeadline) }}）</span>
+        </div>
+
         <div class="res-card__footer">
           <el-button class="btn-accessible" @click="goDetail(item)">查看详情</el-button>
           <el-button
@@ -116,9 +126,10 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Box, Clock, Money, User } from '@element-plus/icons-vue'
+import { Box, Clock, Money, Timer, User } from '@element-plus/icons-vue'
 import { cancelReservation, getMyReservations } from '@/api/reservation'
 import DepositPayDialog from '@/components/reservation/DepositPayDialog.vue'
+import { usePaymentCountdown } from '@/composables/usePaymentCountdown'
 import {
   RESERVATION_STATUS_OPTIONS,
   canCancel,
@@ -129,6 +140,9 @@ import {
 } from '@/utils/reservation'
 
 const router = useRouter()
+
+// 缴费截止倒计时（共享 composable，内部自带每秒心跳与清理）
+const { payCountdown, deadlineClass } = usePaymentCountdown()
 
 const loading = ref(false)
 const list = ref([])
@@ -343,6 +357,36 @@ onMounted(fetchList)
     color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+.pay-countdown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  background: rgba(230, 162, 60, 0.1);
+  color: var(--color-warning);
+
+  .el-icon {
+    flex-shrink: 0;
+  }
+
+  span {
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.is-warning {
+    color: var(--color-warning);
+  }
+
+  &.is-urgent,
+  &.is-overdue {
+    color: var(--color-danger);
+    font-weight: 600;
+    background: rgba(245, 108, 108, 0.1);
   }
 }
 

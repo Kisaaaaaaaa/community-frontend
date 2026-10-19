@@ -37,10 +37,10 @@ export function depositStatusLabel(value) {
   return DEPOSIT_STATUS_LABELS[value] || value || '-'
 }
 
-// 押金退还状态：PROCESSING / SUCCESS / FAILED
+// 押金退还状态：PROCESSING / REFUNDED / FAILED
 export const REFUND_STATUS_LABELS = {
   PROCESSING: '退还处理中',
-  SUCCESS: '退还成功',
+  REFUNDED: '已退还',
   FAILED: '退还失败'
 }
 

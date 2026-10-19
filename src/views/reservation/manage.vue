@@ -54,33 +54,61 @@
 
     <!-- 列表 -->
     <div class="card-box table-card">
-      <el-table v-loading="loading" :data="list" stripe>
-        <el-table-column prop="orderNo" label="预约单号" min-width="180" />
-        <el-table-column prop="toolName" label="工具" min-width="140" />
-        <el-table-column prop="renterName" label="租赁人" min-width="110" />
-        <el-table-column label="租赁时段" min-width="230">
+      <el-table v-loading="loading" :data="list" stripe size="small" class="manage-table">
+        <el-table-column label="预约单号" min-width="148">
           <template #default="{ row }">
-            <div class="slot-cell">
-              <span>{{ row.startTime }}</span>
-              <span class="slot-sep">~</span>
-              <span>{{ row.endTime }}</span>
+            <span class="order-no" :title="row.orderNo">{{ row.orderNo }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="工具" min-width="104">
+          <template #default="{ row }">
+            <span class="ellipsis" :title="row.toolName">{{ row.toolName || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="租赁人" min-width="84">
+          <template #default="{ row }">
+            <span class="ellipsis" :title="row.renterName">{{ row.renterName || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="租赁时段" min-width="176">
+          <template #default="{ row }">
+            <div class="slot-cell" :title="`${row.startTime} ~ ${row.endTime}`">
+              <span>{{ shortDT(row.startTime) }}</span>
+              <span class="slot-sep">→</span>
+              <span>{{ shortDT(row.endTime) }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="押金" width="140">
+        <el-table-column label="押金" min-width="104">
           <template #default="{ row }">
-            <span class="deposit">¥{{ formatAmount(row.depositAmount) }}</span>
-            <el-tag size="small" type="info" effect="plain">{{ depositStatusLabel(row.depositStatus) }}</el-tag>
+            <div class="deposit-cell">
+              <span class="deposit">¥{{ formatAmount(row.depositAmount) }}</span>
+              <el-tag size="small" type="info" effect="plain">
+                {{ depositStatusLabel(row.depositStatus) }}
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="110">
+        <el-table-column label="缴费截止" min-width="110">
+          <template #default="{ row }">
+            <span
+              v-if="row.status === 'WAIT_PAY' && row.payDeadline"
+              class="countdown"
+              :class="deadlineClass(row.payDeadline)"
+            >
+              {{ payCountdown(row.payDeadline) }}
+            </span>
+            <span v-else class="countdown is-none">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" min-width="86">
           <template #default="{ row }">
             <el-tag :type="reservationStatusTag(row.status)" size="small">
               {{ reservationStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="170" fixed="right">
+        <el-table-column label="操作" min-width="106">
           <template #default="{ row }">
             <el-button link type="primary" @click="goDetail(row)">详情</el-button>
             <el-button
@@ -119,6 +147,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { cancelReservation, getManageReservations } from '@/api/reservation'
+import { usePaymentCountdown } from '@/composables/usePaymentCountdown'
 import {
   RESERVATION_STATUS_OPTIONS,
   canCancel,
@@ -182,6 +211,12 @@ function handleReset() {
   fetchList()
 }
 
+// 表中时段精简展示：2026-10-16 20:00 → 10-16 20:00
+function shortDT(value) {
+  const s = String(value || '')
+  return s.length > 10 ? s.slice(5) : s
+}
+
 function goDetail(row) {
   router.push(`/reservations/${row.orderNo}`)
 }
@@ -214,6 +249,9 @@ async function handleCancel(row) {
   }
 }
 
+// 缴费截止倒计时（共享 composable，内部自带每秒心跳与清理）
+const { payCountdown, deadlineClass } = usePaymentCountdown()
+
 onMounted(fetchList)
 </script>
 
@@ -223,21 +261,85 @@ onMounted(fetchList)
 }
 
 .table-card {
+  .manage-table {
+    // 压缩单元格内边距与字号，保证 8 列在常见屏宽下一行放下
+    :deep(.el-table__cell) {
+      padding: 7px 0;
+    }
+
+    :deep(.cell) {
+      padding: 0 6px;
+      font-size: var(--font-size-sm);
+    }
+  }
+
+  .order-no {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--font-size-xs);
+    color: var(--text-regular);
+    letter-spacing: 0.3px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ellipsis {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
   .slot-cell {
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
-    font-size: var(--font-size-sm);
+    gap: 4px;
+    white-space: nowrap;
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
 
     .slot-sep {
       color: var(--text-secondary);
     }
   }
 
+  .deposit-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
   .deposit {
-    margin-right: var(--space-xs);
     font-weight: 600;
     color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .countdown {
+    font-size: var(--font-size-sm);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--text-secondary);
+
+    &.is-none {
+      color: var(--text-placeholder);
+    }
+
+    &.is-warning {
+      color: var(--color-warning);
+    }
+
+    &.is-urgent,
+    &.is-overdue {
+      color: var(--color-danger);
+      font-weight: 600;
+    }
   }
 
   .pagination-wrap {

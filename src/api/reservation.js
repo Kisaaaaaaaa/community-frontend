@@ -58,12 +58,14 @@ export function payDeposit(orderNo, data = { payChannel: 'SANDBOX' }) {
 // 4.3.5 取消预约
 // 权限：resident（本人）/ staff（代操作）
 // data：{ cancelReason? }
+// 注意：取消会触发押金退还，属资金类接口，后端强制要求 X-Idempotency-Key
 // 返回：{ orderNo, status: 'CANCELLED', refundAmount, refundStatus }
 export function cancelReservation(orderNo, data) {
   return request({
     url: `/reservations/${orderNo}/cancel`,
     method: 'post',
-    data
+    data,
+    headers: { 'X-Idempotency-Key': genIdempotencyKey() }
   })
 }
 

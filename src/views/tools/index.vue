@@ -108,7 +108,7 @@
                   删除
                 </el-button>
               </div>
-              <!-- 居民 / 工作人员：可用工具可发起预约（4.3.3） -->
+              <!-- 居民：可用工具可发起预约（4.3.3） -->
               <div v-if="canBook(tool)" class="tool-actions">
                 <el-button type="success" plain class="btn-accessible" @click="goBooking(tool)">
                   预约
@@ -337,8 +337,8 @@ const isAdmin = computed(() => userStore.role === 'ADMIN')
 const isStaff = computed(() => userStore.role === 'STAFF')
 const isResident = computed(() => userStore.role === 'RESIDENT')
 
-// 居民 / 工作人员可对「可用」工具发起预约（4.3.3 权限：resident / staff）
-const canBook = (tool) => (isResident.value || isStaff.value) && tool.status === 'AVAILABLE'
+// 仅居民可对「可用」工具发起预约（4.3.3）
+const canBook = (tool) => isResident.value && tool.status === 'AVAILABLE'
 
 function goBooking(tool) {
   router.push({

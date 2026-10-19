@@ -47,6 +47,30 @@ const routes = [
         meta: { title: '用户管理', roles: ['ADMIN'] }
       },
       {
+        path: 'reservations',
+        name: 'MyReservations',
+        component: () => import('@/views/reservation/index.vue'),
+        meta: { title: '我的预约', roles: ['RESIDENT'] }
+      },
+      {
+        path: 'reservations/create',
+        name: 'ReservationCreate',
+        component: () => import('@/views/reservation/create.vue'),
+        meta: { title: '创建预约', roles: ['RESIDENT'] }
+      },
+      {
+        path: 'reservations/manage',
+        name: 'ReservationManage',
+        component: () => import('@/views/reservation/manage.vue'),
+        meta: { title: '预约管理', roles: ['STAFF', 'ADMIN'] }
+      },
+      {
+        path: 'reservations/:orderNo',
+        name: 'ReservationDetail',
+        component: () => import('@/views/reservation/detail.vue'),
+        meta: { title: '预约详情' }
+      },
+      {
         path: 'about',
         name: 'About',
         component: () => import('@/views/about/index.vue'),

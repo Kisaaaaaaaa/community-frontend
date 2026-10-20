@@ -71,6 +71,24 @@ const routes = [
         meta: { title: '预约详情' }
       },
       {
+        path: 'records',
+        name: 'MyRecords',
+        component: () => import('@/views/rentrecord/rentrecord.vue'),
+        meta: { title: '我的租赁记录', roles: ['RESIDENT'] }
+      },
+      {
+        path: 'records/manage',
+        name: 'RecordManage',
+        component: () => import('@/views/rentrecord/manage.vue'),
+        meta: { title: '租赁记录管理', roles: ['STAFF', 'ADMIN'] }
+      },
+      {
+        path: 'records/:orderNo',
+        name: 'RecordDetail',
+        component: () => import('@/views/rentrecord/detail.vue'),
+        meta: { title: '租赁记录详情' }
+      },
+      {
         path: 'about',
         name: 'About',
         component: () => import('@/views/about/index.vue'),

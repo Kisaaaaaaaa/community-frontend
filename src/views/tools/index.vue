@@ -251,6 +251,7 @@
             v-model="createForm.purchaseDate"
             type="date"
             value-format="YYYY-MM-DD"
+            :disabled-date="disabledPurchaseDate"
             placeholder="选择日期（可选）"
             class="select-input"
           />
@@ -623,6 +624,7 @@ const createRules = {
   ],
   toolImageIds: [
     {
+      required: true,
       validator: (_rule, _value, callback) => {
         if (hasUploading(toolImageList.value)) {
           callback(new Error('图片正在上传，请稍候'))
@@ -635,6 +637,11 @@ const createRules = {
       trigger: 'change'
     }
   ]
+}
+
+// 采购日期只能选今天及之前（不可选未来日期）
+function disabledPurchaseDate(time) {
+  return time.getTime() > Date.now()
 }
 
 // 打开录入弹窗：destroy-on-close 会销毁表单组件，这里同步清空数据

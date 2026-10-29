@@ -74,7 +74,9 @@
 
             <!-- 工具信息 -->
             <div class="tool-info">
-              <div class="tool-name" :title="tool.toolName">{{ tool.toolName }}</div>
+              <div class="tool-name" :title="tool.toolName" @click="goDetail(tool)">
+                {{ tool.toolName }}
+              </div>
               <div class="tool-code">{{ tool.toolCode }}</div>
               <div class="tool-spec" :title="tool.modelSpec">{{ tool.modelSpec }}</div>
               <div class="tool-meta">
@@ -83,6 +85,11 @@
                 </el-tag>
                 <span class="deposit">押金 ¥{{ formatAmount(tool.depositAmount) }}</span>
               </div>
+              <!-- 工具详情（4.2.4） -->
+              <el-button link type="primary" class="detail-link" @click="goDetail(tool)">
+                查看详情
+                <el-icon><ArrowRight /></el-icon>
+              </el-button>
               <!-- 管理员操作：待审核工具可审核，可用状态工具可删除（确认弹窗） -->
               <div
                 v-if="isAdmin && (tool.auditStatus === 'PENDING' || tool.status === 'AVAILABLE')"
@@ -324,7 +331,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Picture, Plus } from '@element-plus/icons-vue'
+import { ArrowRight, Picture, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { uploadImage } from '@/api/file'
 import { auditTool, createTool, deleteTool, getToolList } from '@/api/tool'
@@ -350,6 +357,11 @@ function goBooking(tool) {
       depositAmount: tool.depositAmount
     }
   })
+}
+
+// 工具详情（4.2.4）
+function goDetail(tool) {
+  router.push({ name: 'ToolDetail', params: { toolCode: tool.toolCode } })
 }
 
 const loading = ref(false)
@@ -788,6 +800,11 @@ onMounted(() => {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--color-primary);
+      }
     }
 
     .tool-code {
@@ -824,6 +841,13 @@ onMounted(() => {
         width: 100%;
         margin-left: 0;
       }
+    }
+
+    // 查看详情
+    .detail-link {
+      align-self: flex-start;
+      margin-top: var(--space-xs);
+      padding: 0;
     }
   }
 }

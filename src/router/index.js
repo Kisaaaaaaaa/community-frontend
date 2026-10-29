@@ -35,6 +35,12 @@ const routes = [
         meta: { title: '工具列表' }
       },
       {
+        path: 'tools/:toolCode',
+        name: 'ToolDetail',
+        component: () => import('@/views/tools/detail.vue'),
+        meta: { title: '工具详情' }
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/profile/index.vue'),

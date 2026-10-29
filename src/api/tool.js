@@ -35,3 +35,29 @@ export function deleteTool(toolCode) {
     method: 'delete'
   })
 }
+
+// 4.2.4 工具详情查询：返回 { tool, rentalHistory }
+export function getToolDetail(toolCode) {
+  return request({
+    url: `/tools/${toolCode}`,
+    method: 'get'
+  })
+}
+
+// 4.2.5 工具状态更新：data = { status, reason, damageLevel? }
+export function updateToolStatus(toolCode, data) {
+  return request({
+    url: `/tools/${toolCode}/status`,
+    method: 'put',
+    data
+  })
+}
+
+// 4.2.6 工具状态变更日志：params = { page, pageSize }
+export function getToolStatusLogs(toolCode, params) {
+  return request({
+    url: `/tools/${toolCode}/status-logs`,
+    method: 'get',
+    params
+  })
+}

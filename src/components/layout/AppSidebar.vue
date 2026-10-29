@@ -46,10 +46,10 @@
         <el-icon><UserFilled /></el-icon>
         <template #title>用户管理</template>
       </el-menu-item>
-      <el-menu-item index="/about">
+      <!-- <el-menu-item index="/about">
         <el-icon><InfoFilled /></el-icon>
         <template #title>关于平台</template>
-      </el-menu-item>
+      </el-menu-item> -->
     </el-menu>
   </aside>
 </template>

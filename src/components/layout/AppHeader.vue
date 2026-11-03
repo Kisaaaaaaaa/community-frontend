@@ -29,7 +29,9 @@
             <el-dropdown-menu>
               <el-dropdown-item disabled>{{ userStore.roleLabel }}</el-dropdown-item>
               <el-dropdown-item command="profile">个人主页</el-dropdown-item>
-              <el-dropdown-item>我的消息</el-dropdown-item>
+              <el-dropdown-item v-if="userStore.role === 'RESIDENT'" command="notifications">
+                我的消息
+              </el-dropdown-item>
               <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -60,6 +62,10 @@ const avatarText = computed(() => (userStore.realName || userStore.roleLabel || 
 async function handleCommand(command) {
   if (command === 'profile') {
     router.push('/profile')
+    return
+  }
+  if (command === 'notifications') {
+    router.push('/notifications')
     return
   }
   if (command === 'logout') {

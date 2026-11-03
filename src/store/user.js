@@ -62,6 +62,9 @@ export const useUserStore = defineStore('user', () => {
     refreshToken.value = ''
     userInfo.value = null
     clearAuth()
+    import('@/store/notification')
+      .then(({ useNotificationStore }) => useNotificationStore().reset())
+      .catch(() => {})
   }
 
   // 登录

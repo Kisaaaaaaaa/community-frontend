@@ -50,15 +50,29 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useAppStore } from '@/store/app'
+import { useNotificationStore } from '@/store/notification'
+import { useUserStore } from '@/store/user'
 import { useResponsive } from '@/utils/responsive'
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
 import { HomeFilled, InfoFilled, Box } from '@element-plus/icons-vue'
 
 const appStore = useAppStore()
+const userStore = useUserStore()
+const notificationStore = useNotificationStore()
 const { isMobile } = useResponsive()
+
+onMounted(() => {
+  if (userStore.role === 'RESIDENT') {
+    notificationStore.startPolling()
+  }
+})
+
+onUnmounted(() => {
+  notificationStore.reset()
+})
 
 // 底部导航菜单项（与路由 children 对应）
 const menuItems = computed(() => [

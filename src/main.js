@@ -10,6 +10,7 @@ import 'element-plus/theme-chalk/dark/css-vars.css'
 // ElMessage / ElMessageBox 以 JS 方式调用，按需引入不会自动带上样式，需显式引入
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
+import 'element-plus/es/components/notification/style/css'
 
 // 全局样式
 import '@/assets/styles/index.scss'

@@ -41,6 +41,24 @@ const routes = [
         meta: { title: '工具详情' }
       },
       {
+        path: 'notifications',
+        name: 'MyNotifications',
+        component: () => import('@/views/notifications/index.vue'),
+        meta: { title: '我的消息', roles: ['RESIDENT'] }
+      },
+      {
+        path: 'notifications/records',
+        name: 'NotificationRecords',
+        component: () => import('@/views/notifications/records.vue'),
+        meta: { title: '提醒发送记录', roles: ['STAFF', 'ADMIN'] }
+      },
+      {
+        path: 'notifications/config',
+        name: 'NotificationConfig',
+        component: () => import('@/views/notifications/config.vue'),
+        meta: { title: '提醒配置', roles: ['ADMIN'] }
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/profile/index.vue'),

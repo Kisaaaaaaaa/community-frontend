@@ -48,6 +48,7 @@
       >
         <el-icon><Tools /></el-icon>
         <template #title>报修管理</template>
+      </el-menu-item>
       <el-menu-item v-if="userStore.role === 'RESIDENT'" index="/notifications" class="notify-menu-item">
         <el-icon class="notify-icon-wrap">
           <Bell />
@@ -91,8 +92,7 @@ import { useRoute } from 'vue-router'
 import { useAppStore } from '@/store/app'
 import { useNotificationStore } from '@/store/notification'
 import { useUserStore } from '@/store/user'
-import { Box, Calendar, Document, HomeFilled, InfoFilled, Reading, Tickets, Tools, User, UserFilled, Warning } from '@element-plus/icons-vue'
-import { Bell, Box, Calendar, Document, HomeFilled, InfoFilled, Message, Reading, Setting, Tickets, User, UserFilled } from '@element-plus/icons-vue'
+import { Bell, Box, Calendar, Document, HomeFilled, InfoFilled, Message, Reading, Setting, Tickets, Tools, User, UserFilled, Warning } from '@element-plus/icons-vue'
 
 defineProps({
   inDrawer: {

@@ -113,6 +113,30 @@ const routes = [
         meta: { title: '租赁记录详情' }
       },
       {
+        path: 'repairs',
+        name: 'RepairMy',
+        component: () => import('@/views/repair/my.vue'),
+        meta: { title: '我的报修', roles: ['RESIDENT'] }
+      },
+      {
+        path: 'repairs/submit',
+        name: 'RepairSubmit',
+        component: () => import('@/views/repair/submit.vue'),
+        meta: { title: '提交报修', roles: ['RESIDENT'] }
+      },
+      {
+        path: 'repairs/manage',
+        name: 'RepairManage',
+        component: () => import('@/views/repair/manage.vue'),
+        meta: { title: '报修管理', roles: ['STAFF', 'ADMIN'] }
+      },
+      {
+        path: 'repairs/:repairNo',
+        name: 'RepairDetail',
+        component: () => import('@/views/repair/detail.vue'),
+        meta: { title: '报修单详情' }
+      },
+      {
         path: 'about',
         name: 'About',
         component: () => import('@/views/about/index.vue'),

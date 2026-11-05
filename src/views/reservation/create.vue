@@ -505,13 +505,27 @@ async function handleSubmit() {
     })
 
     if (!check?.available) {
-      // 冲突：提示冲突明细与推荐时段
-      const first = check?.suggestedSlots?.[0]
-      ElMessage.warning('该时段已被预约，请重新选择')
-      if (first) {
-        selected.startTime = first.startTime
-        selected.endTime = first.endTime
-        ElMessage.info(`已为你选择系统推荐的最近时段：${first.startTime} ~ ${first.endTime}`)
+      // 按后端返回的 unavailableReason 给出具体提示，而不是一律"已被预约"
+      const reason = check?.unavailableReason
+      const msgMap = {
+        TIME_IN_PAST: '预约起始时间必须晚于当前时间',
+        START_BEYOND_LEAD: `起始时间不能晚于 ${check?.leadTimeCheck?.maxLeadDays} 天`,
+        DURATION_TOO_SHORT: `单次预约不能少于 ${check?.durationCheck?.minHours} 小时`,
+        DURATION_TOO_LONG: `单次预约不能超过 ${check?.durationCheck?.maxDays} 天`,
+        OUTSIDE_BUSINESS_HOURS: `超出营业时间（${check?.businessHoursCheck?.businessHours?.start || ''} ~ ${check?.businessHoursCheck?.businessHours?.end || ''}）`,
+        CONFLICT: '该时段已被预约，请重新选择',
+      }
+      const msg = msgMap[reason] || '所选时段暂不可用'
+      if (reason === 'CONFLICT') {
+        const first = check?.suggestedSlots?.[0]
+        ElMessage.warning(msg)
+        if (first) {
+          selected.startTime = first.startTime
+          selected.endTime = first.endTime
+          ElMessage.info(`已为你选择系统推荐的最近时段：${first.startTime} ~ ${first.endTime}`)
+        }
+      } else {
+        ElMessage.warning(msg)
       }
       await fetchSlots()
       return

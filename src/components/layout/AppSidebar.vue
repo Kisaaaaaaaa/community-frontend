@@ -38,6 +38,17 @@
         <el-icon><Document /></el-icon>
         <template #title>租赁管理</template>
       </el-menu-item>
+      <el-menu-item v-if="userStore.role === 'RESIDENT'" index="/repairs">
+        <el-icon><Warning /></el-icon>
+        <template #title>我的报修</template>
+      </el-menu-item>
+      <el-menu-item
+        v-if="userStore.role === 'STAFF' || userStore.role === 'ADMIN'"
+        index="/repairs/manage"
+      >
+        <el-icon><Tools /></el-icon>
+        <template #title>报修管理</template>
+      </el-menu-item>
       <el-menu-item index="/profile">
         <el-icon><User /></el-icon>
         <template #title>个人主页</template>
@@ -59,7 +70,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
-import { Box, Calendar, Document, HomeFilled, InfoFilled, Reading, Tickets, User, UserFilled } from '@element-plus/icons-vue'
+import { Box, Calendar, Document, HomeFilled, InfoFilled, Reading, Tickets, Tools, User, UserFilled, Warning } from '@element-plus/icons-vue'
 
 defineProps({
   inDrawer: {

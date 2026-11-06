@@ -23,7 +23,7 @@
               round size="small"
             >{{ progressLabel(detail.progressStatus) }}</el-tag>
             <el-tag
-              v-if="detail.feeStatus && detail.feeStatus !== 'UNPAID'"
+              v-if="isStaffOrAdmin && detail.feeStatus && detail.feeStatus !== 'UNPAID'"
               :type="feeTagType(detail.feeStatus)" round size="small"
             >费用：{{ feeStatusLabel(detail.feeStatus) }}</el-tag>
           </div>
@@ -195,7 +195,7 @@
               <span class="kv-label">进度更新</span>
               <span class="kv-value">{{ detail.progressUpdateTime || '-' }}</span>
             </div>
-            <div class="kv-item">
+            <div class="kv-item" v-if="isStaffOrAdmin">
               <span class="kv-label">维修费用</span>
               <span class="kv-value">
                 <span v-if="detail.repairFee != null" class="money">¥{{ formatMoney(detail.repairFee) }}</span>
@@ -275,7 +275,7 @@
                 {{ progressLabel(log.progressStatus) }}
               </el-tag>
               <span v-if="log.repairer" class="log-meta">负责人：{{ log.repairer }}</span>
-              <span v-if="log.repairFee != null" class="log-meta">费用 ¥{{ formatMoney(log.repairFee) }}</span>
+              <span v-if="log.repairFee != null && isStaffOrAdmin" class="log-meta">费用 ¥{{ formatMoney(log.repairFee) }}</span>
             </div>
             <p class="log-desc">{{ log.progressDesc }}</p>
           </el-timeline-item>
@@ -283,7 +283,7 @@
       </div>
 
       <!-- ===== 费用二维码 ===== -->
-      <div class="card-box fee-card" v-if="feePayment">
+      <div class="card-box fee-card" v-if="feePayment && isStaffOrAdmin">
         <h4 class="section-title">
           <span class="section-title__icon"><el-icon><Money /></el-icon></span>
           维修费用支付
@@ -361,7 +361,7 @@
         <el-form-item label="预计时长">
           <el-input v-model="progressForm.expectedDuration" placeholder="如 2 小时 / 明天上午" maxlength="50" />
         </el-form-item>
-        <el-form-item label="维修费用">
+        <el-form-item label="维修费用" v-if="progressForm.progressStatus && progressForm.progressStatus !== 'REPAIRED' && progressForm.progressStatus !== 'FAILED'">
           <el-input-number
             v-model="progressForm.repairFee"
             :min="0" :precision="2" :step="10"
@@ -482,6 +482,7 @@ const userStore = useUserStore()
 
 const repairNo = computed(() => route.params.repairNo)
 const isStaff = computed(() => userStore.role === 'STAFF')
+const isStaffOrAdmin = computed(() => userStore.role === 'STAFF' || userStore.role === 'ADMIN')
 
 const loading = ref(false)
 const detail = ref(null)

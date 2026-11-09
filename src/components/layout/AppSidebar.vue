@@ -49,6 +49,17 @@
         <el-icon><Tools /></el-icon>
         <template #title>报修管理</template>
       </el-menu-item>
+      <el-menu-item index="/ai/chat">
+        <el-icon><ChatDotRound /></el-icon>
+        <template #title>AI 问答助手</template>
+      </el-menu-item>
+      <el-menu-item
+        v-if="userStore.role === 'STAFF' || userStore.role === 'ADMIN'"
+        index="/ai/kb"
+      >
+        <el-icon><Files /></el-icon>
+        <template #title>知识库管理</template>
+      </el-menu-item>
       <el-menu-item v-if="userStore.role === 'RESIDENT'" index="/notifications" class="notify-menu-item">
         <el-icon class="notify-icon-wrap">
           <Bell />
@@ -92,7 +103,7 @@ import { useRoute } from 'vue-router'
 import { useAppStore } from '@/store/app'
 import { useNotificationStore } from '@/store/notification'
 import { useUserStore } from '@/store/user'
-import { Bell, Box, Calendar, Document, HomeFilled, InfoFilled, Message, Reading, Setting, Tickets, Tools, User, UserFilled, Warning } from '@element-plus/icons-vue'
+import { Bell, Box, Calendar, ChatDotRound, Document, Files, HomeFilled, InfoFilled, Message, Reading, Setting, Tickets, Tools, User, UserFilled, Warning } from '@element-plus/icons-vue'
 
 defineProps({
   inDrawer: {

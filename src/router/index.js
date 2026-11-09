@@ -137,6 +137,18 @@ const routes = [
         meta: { title: '报修单详情' }
       },
       {
+        path: 'ai/chat',
+        name: 'AiChat',
+        component: () => import('@/views/ai/chat.vue'),
+        meta: { title: 'AI 问答助手', roles: ['RESIDENT', 'STAFF', 'ADMIN'], fullBleed: true }
+      },
+      {
+        path: 'ai/kb',
+        name: 'AiKnowledgeBase',
+        component: () => import('@/views/ai/kb.vue'),
+        meta: { title: '知识库管理', roles: ['STAFF', 'ADMIN'] }
+      },
+      {
         path: 'about',
         name: 'About',
         component: () => import('@/views/about/index.vue'),

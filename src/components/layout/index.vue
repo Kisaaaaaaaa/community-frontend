@@ -21,7 +21,7 @@
 
       <!-- 主内容区 -->
       <main class="layout-main">
-        <div class="layout-content">
+        <div class="layout-content" :class="{ 'is-full': route.meta.fullBleed }">
           <router-view v-slot="{ Component }">
             <transition name="fade" mode="out-in">
               <component :is="Component" />
@@ -51,6 +51,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '@/store/app'
 import { useNotificationStore } from '@/store/notification'
 import { useUserStore } from '@/store/user'
@@ -59,6 +60,7 @@ import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
 import { HomeFilled, InfoFilled, Box } from '@element-plus/icons-vue'
 
+const route = useRoute()
 const appStore = useAppStore()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
@@ -106,6 +108,12 @@ const menuItems = computed(() => [
   max-width: var(--content-max-width);
   margin: 0 auto;
   padding: var(--space-lg);
+}
+
+// 全屏铺满型页面（如 AI 对话）：去掉最大宽度与内边距，内容紧贴侧边栏
+.layout-content.is-full {
+  max-width: none;
+  padding: 0;
 }
 
 // 移动端底部导航栏

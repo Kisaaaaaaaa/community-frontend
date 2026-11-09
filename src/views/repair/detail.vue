@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="repair-detail-page">
     <!-- 加载中 -->
     <el-skeleton v-if="loading" :rows="12" animated class="card-box" />
@@ -740,7 +740,16 @@ async function handleProgress() {
   await progressFormRef.value.validate()
   progressSubmitting.value = true
   try {
-    await updateRepairProgress(repairNo.value, { ...progressForm })
+    const payload = { ...progressForm }
+    // 维修完成/失败无需填写费用；repairFee 为 null 会被后端判为不合法，需直接不传该字段
+    if (payload.repairFee == null || ['REPAIRED', 'FAILED'].includes(payload.progressStatus)) {
+      delete payload.repairFee
+    }
+    // 空字符串不符合 repairStartTime 的日期格式校验，未填写时不传
+    if (!payload.repairStartTime) {
+      delete payload.repairStartTime
+    }
+    await updateRepairProgress(repairNo.value, payload)
     ElMessage.success('进度已更新')
     progressVisible.value = false
     Object.assign(progressForm, {

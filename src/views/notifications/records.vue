@@ -19,7 +19,12 @@
         </el-form-item>
         <el-form-item label="提醒方式">
           <el-select v-model="query.channel" placeholder="全部" clearable style="width: 140px">
-            <el-option label="站内消息" value="IN_APP" />
+            <el-option
+              v-for="item in CHANNEL_OPTIONS"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="接收状态">
@@ -76,18 +81,31 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="bizId" label="业务单号" min-width="160">
+        <el-table-column label="业务单号" min-width="160">
           <template #default="{ row }">{{ row.bizId || '-' }}</template>
         </el-table-column>
         <el-table-column label="提醒方式" width="110">
-          <template #default>站内消息</template>
+          <template #default="{ row }">
+            <el-tag :type="row.channel === 'EMAIL' ? 'success' : 'info'" size="small" effect="light">
+              {{ channelLabel(row.channel) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="接收邮箱" min-width="190">
+          <template #default="{ row }">{{ row.recipientEmail || '-' }}</template>
         </el-table-column>
         <el-table-column prop="sendTime" label="提醒时间" min-width="150" />
         <el-table-column label="接收状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="receiveStatusTag(row.receiveStatus)" size="small">
-              {{ receiveStatusLabel(row.receiveStatus) }}
-            </el-tag>
+            <el-tooltip
+              :disabled="row.receiveStatus !== 'FAILED' || !row.failReason"
+              :content="row.failReason || ''"
+              placement="top"
+            >
+              <el-tag :type="receiveStatusTag(row.receiveStatus)" size="small">
+                {{ receiveStatusLabel(row.receiveStatus) }}
+              </el-tag>
+            </el-tooltip>
           </template>
         </el-table-column>
         <template #empty>
@@ -115,8 +133,10 @@
 import { onMounted, reactive, ref } from 'vue'
 import { getNotificationRecords } from '@/api/notification'
 import {
+  CHANNEL_OPTIONS,
   NOTIFY_TYPE_OPTIONS,
   RECEIVE_STATUS_OPTIONS,
+  channelLabel,
   notifyTypeLabel,
   notifyTypeTag,
   receiveStatusLabel,

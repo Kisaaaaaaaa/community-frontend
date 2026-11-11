@@ -4,13 +4,35 @@
       <div class="config-head">
         <div>
           <h3 class="page-title">提醒配置</h3>
-          <p class="page-sub">默认提醒方式：站内消息</p>
+          <p class="page-sub">默认提醒方式：{{ channelModeLabel(config.defaultChannel) }}</p>
         </div>
         <el-button type="primary" :loading="saving" :disabled="loading" @click="handleSave">
           保存配置
         </el-button>
       </div>
 
+      <el-form label-width="110px" class="channel-form">
+        <el-form-item label="默认提醒方式">
+          <el-radio-group v-model="config.defaultChannel">
+            <el-radio-button
+              v-for="item in CHANNEL_MODE_OPTIONS"
+              :key="item.value"
+              :value="item.value"
+            >
+              {{ item.label }}
+            </el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="config.defaultChannel !== 'IN_APP'"
+        title="邮件提醒将发送到接收人在个人资料中填写的邮箱；未填写邮箱的提醒会记为发送失败。"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="config-tip"
+      />
       <el-alert
         title="租赁到期与取件提醒按提前量触发；逾期与维修完成提醒为即时触发。"
         type="info"
@@ -32,9 +54,11 @@
             <el-switch v-model="row.enabled" />
           </template>
         </el-table-column>
-        <el-table-column label="提醒方式" min-width="120">
+        <el-table-column label="提醒方式" min-width="150">
           <template #default>
-            <span>站内消息</span>
+            <el-tag :type="config.defaultChannel === 'IN_APP' ? 'info' : 'success'" effect="light">
+              {{ channelModeLabel(config.defaultChannel) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="提前提醒时间" min-width="230">
@@ -62,7 +86,12 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getNotificationConfig, updateNotificationConfig } from '@/api/notification'
-import { notifyTypeLabel, notifyTypeTag } from '@/utils/notification'
+import {
+  CHANNEL_MODE_OPTIONS,
+  channelModeLabel,
+  notifyTypeLabel,
+  notifyTypeTag
+} from '@/utils/notification'
 
 const IMMEDIATE_TYPES = ['OVERDUE', 'REPAIR_DONE']
 
@@ -82,7 +111,7 @@ async function fetchConfig() {
     config.defaultChannel = data?.defaultChannel || 'IN_APP'
     config.items = (data?.items || []).map((item) => ({
       ...item,
-      channel: 'IN_APP',
+      channel: item.channel || config.defaultChannel,
       advanceHours: item.advanceHours ?? 0
     }))
   } finally {
@@ -96,10 +125,10 @@ async function handleSave() {
     const items = config.items.map((item) => ({
       type: item.type,
       enabled: item.enabled,
-      channel: 'IN_APP',
+      channel: config.defaultChannel,
       advanceHours: isImmediate(item.type) ? 0 : item.advanceHours
     }))
-    await updateNotificationConfig({ defaultChannel: 'IN_APP', items })
+    await updateNotificationConfig({ defaultChannel: config.defaultChannel, items })
     ElMessage.success('提醒配置已保存')
     await fetchConfig()
   } catch {
@@ -137,6 +166,14 @@ onMounted(fetchConfig)
 
 .config-tip {
   margin-bottom: var(--space-md);
+}
+
+.channel-form {
+  margin-bottom: var(--space-sm);
+
+  :deep(.el-radio-group) {
+    flex-wrap: wrap;
+  }
 }
 
 .advance-cell {

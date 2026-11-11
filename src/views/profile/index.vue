@@ -60,6 +60,18 @@
             </div>
           </el-form-item>
 
+          <el-form-item label="邮箱" prop="email">
+            <el-input
+              v-model="form.email"
+              placeholder="请输入邮箱"
+              maxlength="100"
+              clearable
+            />
+            <div class="field-tip">
+              当前：{{ profile.email || '-' }}
+            </div>
+          </el-form-item>
+
           <el-form-item label="家庭住址" prop="address">
             <el-input
               v-model="form.address"
@@ -168,6 +180,7 @@ const profile = reactive({
   userId: '',
   username: '',
   realName: '',
+  email: '',
   phone: '',
   role: '',
   status: '',
@@ -179,6 +192,7 @@ const profile = reactive({
 const form = reactive({
   username: '',
   realName: '',
+  email: '',
   phone: '',
   address: ''
 })
@@ -191,6 +205,7 @@ const pwdForm = reactive({
 })
 
 const PHONE_PATTERN = /^1[3-9]\d{9}$/
+const EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 const STAFF_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_]{2,19}$/
 
 const isAdmin = computed(() => userStore.role === 'ADMIN')
@@ -214,6 +229,8 @@ const statusTagType = computed(() => {
 const infoItems = computed(() => [
   { label: '用户 ID', value: profile.userId },
   { label: '登录账号', value: profile.username },
+  { label: '真实姓名', value: profile.realName },
+  { label: '邮箱', value: profile.email },
   { label: '手机号', value: profile.phone },
   { label: '角色身份', value: roleLabel.value },
   { label: '账号状态', value: statusLabel.value },
@@ -243,6 +260,18 @@ const rules = {
       validator: (rule, value, callback) => {
         if (value && !PHONE_PATTERN.test(value)) {
           callback(new Error('请输入正确的 11 位手机号'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  email: [
+    {
+      validator: (rule, value, callback) => {
+        if (value && !EMAIL_PATTERN.test(value)) {
+          callback(new Error('请输入正确的邮箱格式'))
         } else {
           callback()
         }
@@ -308,6 +337,7 @@ async function loadProfile() {
 function resetForm() {
   form.username = profile.username || ''
   form.realName = profile.realName || ''
+  form.email = profile.email || ''
   form.phone = ''
   form.address = profile.address || ''
   formRef.value?.clearValidate()
@@ -327,6 +357,7 @@ function closeDrawer() {
 function buildPayload() {
   const payload = {}
   const realName = form.realName.trim()
+  const email = form.email.trim()
   const phone = form.phone.trim()
   const address = form.address.trim()
 
@@ -335,6 +366,9 @@ function buildPayload() {
   }
   if (realName && realName !== profile.realName) {
     payload.realName = realName
+  }
+  if (email !== (profile.email || '')) {
+    payload.email = email
   }
   if (phone && phone !== profile.phone) {
     payload.phone = phone

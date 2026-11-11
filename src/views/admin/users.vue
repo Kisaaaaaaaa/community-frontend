@@ -16,7 +16,7 @@
           <el-form-item label="关键词">
             <el-input
               v-model="query.keyword"
-              placeholder="登录账号 / 姓名 / 手机号"
+              placeholder="登录账号 / 姓名 / 手机号 / 邮箱"
               clearable
               style="width: 220px"
               @keyup.enter="handleSearch"
@@ -50,6 +50,7 @@
           <el-table-column prop="username" label="登录账号" min-width="130" />
           <el-table-column prop="realName" label="姓名" min-width="110" />
           <el-table-column prop="phone" label="手机号" min-width="140" />
+          <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
           <el-table-column label="角色" width="130">
             <template #default="{ row }">
               <el-tag :type="roleTagType(row.role)" size="small">{{ roleLabel(row.role) }}</el-tag>

@@ -11,6 +11,19 @@ export const RECEIVE_STATUS_OPTIONS = [
   { value: 'FAILED', label: '发送失败' }
 ]
 
+// 提醒方式：记录表里的单条渠道（IN_APP / EMAIL）
+export const CHANNEL_OPTIONS = [
+  { value: 'IN_APP', label: '站内消息' },
+  { value: 'EMAIL', label: '邮件通知' }
+]
+
+// 配置页的默认提醒方式：可同时投递两个渠道
+export const CHANNEL_MODE_OPTIONS = [
+  { value: 'IN_APP', label: '仅站内消息' },
+  { value: 'EMAIL', label: '仅邮件通知' },
+  { value: 'BOTH', label: '站内消息 + 邮件' }
+]
+
 const NOTIFY_TYPE_TAGS = {
   RENTAL_DUE: 'warning',
   OVERDUE: 'danger',
@@ -38,4 +51,14 @@ export function receiveStatusLabel(status) {
 
 export function receiveStatusTag(status) {
   return RECEIVE_STATUS_TAGS[status] || 'info'
+}
+
+// 单条记录渠道文案：IN_APP → 站内消息，EMAIL → 邮件通知
+export function channelLabel(channel) {
+  return CHANNEL_OPTIONS.find((item) => item.value === channel)?.label || channel || '-'
+}
+
+// 默认提醒方式文案：IN_APP / EMAIL / BOTH
+export function channelModeLabel(mode) {
+  return CHANNEL_MODE_OPTIONS.find((item) => item.value === mode)?.label || mode || '-'
 }

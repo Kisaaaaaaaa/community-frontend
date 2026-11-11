@@ -68,6 +68,16 @@
           </el-col>
         </el-row>
 
+        <el-form-item label="邮箱" prop="email">
+          <el-input
+            v-model="form.email"
+            placeholder="请输入常用邮箱"
+            :prefix-icon="Message"
+            maxlength="100"
+            clearable
+          />
+        </el-form-item>
+
         <el-form-item label="住址（选填）" prop="address">
           <el-input
             v-model="form.address"
@@ -103,7 +113,7 @@
 import { nextTick, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { HomeFilled, Iphone, Lock, LocationInformation, User } from '@element-plus/icons-vue'
+import { HomeFilled, Iphone, Lock, LocationInformation, User, Message } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -129,6 +139,7 @@ const form = reactive({
   role: 'resident', // resident：居民；staff：社区工作人员
   realName: '',
   phone: '',
+  email: '',
   password: '',
   confirmPassword: '',
   address: ''
@@ -137,6 +148,7 @@ const form = reactive({
 // 校验规则（与接口要求一致）
 const phonePattern = /^1[3-9]\d{9}$/
 const passwordPattern = /^(?=.*[A-Za-z])(?=.*\d).{8,20}$/
+const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 
 const rules = {
   realName: [
@@ -164,7 +176,11 @@ const rules = {
       trigger: 'blur'
     }
   ],
-  address: [{ max: 200, message: '住址最长 200 位', trigger: 'blur' }]
+  address: [{ max: 200, message: '住址最长 200 位', trigger: 'blur' }],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { pattern: emailPattern, message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ]
 }
 
 async function handleRegister() {
@@ -185,6 +201,7 @@ async function handleRegister() {
       username: phone, // 居民/工作人员：username 与 phone 一致
       realName: form.realName.trim(),
       phone,
+      email: form.email.trim(),
       password: form.password
     }
     const address = form.address.trim()

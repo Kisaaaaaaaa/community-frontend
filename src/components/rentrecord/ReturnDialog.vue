@@ -33,14 +33,8 @@
     </div>
 
     <el-form ref="formRef" :model="form" :rules="rules" label-width="110px" class="return-form">
-      <el-form-item label="归还时间" prop="returnTime">
-        <el-date-picker
-          v-model="form.returnTime"
-          type="datetime"
-          value-format="YYYY-MM-DD HH:mm"
-          placeholder="选择实际归还时间"
-          style="width: 100%"
-        />
+      <el-form-item label="归还时间">
+        <span class="return-time-text">{{ form.returnTime }}</span>
       </el-form-item>
       <el-form-item label="验收结果" prop="acceptanceResult">
         <el-radio-group v-model="form.acceptanceResult">
@@ -121,7 +115,6 @@ const form = reactive({
 })
 
 const rules = {
-  returnTime: [{ required: true, message: '请选择归还时间', trigger: 'change' }],
   acceptanceResult: [{ required: true, message: '请选择验收结果', trigger: 'change' }],
   damageLevel: [{ required: true, message: '请选择损坏程度', trigger: 'change' }]
 }
@@ -145,19 +138,24 @@ const autoOverdueFee = computed(() => {
   return Math.min(fee, deposit)
 })
 
+// 读取当前时间（格式 YYYY-MM-DD HH:mm）
+function currentTimeText() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mm = String(now.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${d} ${hh}:${mm}`
+}
+
 // 打开弹窗时初始化
 watch(
   () => props.visible,
   (val) => {
     if (val) {
-      // 默认归还时间为当前时间
-      const now = new Date()
-      const y = now.getFullYear()
-      const m = String(now.getMonth() + 1).padStart(2, '0')
-      const d = String(now.getDate()).padStart(2, '0')
-      const hh = String(now.getHours()).padStart(2, '0')
-      const mm = String(now.getMinutes()).padStart(2, '0')
-      form.returnTime = `${y}-${m}-${d} ${hh}:${mm}`
+      // 归还时间直接取当前时间
+      form.returnTime = currentTimeText()
       form.acceptanceResult = 'INTACT'
       form.damageLevel = 1
       form.overdueFee = undefined
@@ -174,6 +172,8 @@ async function handleSubmit() {
   } catch {
     return
   }
+  // 提交时以当前时间为实际归还时间
+  form.returnTime = currentTimeText()
   submitting.value = true
   try {
     await confirmReturn(props.row.orderNo, {
@@ -232,5 +232,10 @@ async function handleSubmit() {
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
   margin-top: 4px;
+}
+
+.return-time-text {
+  font-weight: 500;
+  color: var(--text-primary);
 }
 </style>

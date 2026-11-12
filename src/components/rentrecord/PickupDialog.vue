@@ -81,6 +81,7 @@ const rules = {
   pickerName: [{ required: true, message: '请输入取件人姓名', trigger: 'blur' }],
   checkedIdNo: [
     {
+      required: true,
       validator: (_, value, cb) => {
         if (!value) cb(new Error('请先核验取件人身份证或预约单号'))
         else cb()

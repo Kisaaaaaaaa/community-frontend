@@ -238,8 +238,7 @@ const infoGroups = computed(() => {
         { label: '工具名称', value: r.toolName },
         { label: '工具编号', value: r.toolCode },
         { label: '租赁人', value: r.renterName },
-        { label: '联系方式', value: r.renterPhone },
-        { label: '身份证号', value: r.renterIdCard }
+        { label: '联系方式', value: r.renterPhone }
       ]
     },
     {

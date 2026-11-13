@@ -70,10 +70,6 @@
               <span class="kv-value">{{ record.renterPhone || '-' }}</span>
             </div>
             <div class="kv-item">
-              <span class="kv-label">身份证号</span>
-              <span class="kv-value">{{ record.renterIdCard || '-' }}</span>
-            </div>
-            <div class="kv-item">
               <span class="kv-label">取件人</span>
               <span class="kv-value">{{ record.pickerName || '-' }}</span>
             </div>

@@ -1,4 +1,6 @@
 export const NOTIFY_TYPE_OPTIONS = [
+  { value: 'RESERVATION_SUCCESS', label: '预约成功通知' },
+  { value: 'REPAIR_CONFIRM', label: '报修确认通知' },
   { value: 'RENTAL_DUE', label: '租赁到期提醒' },
   { value: 'OVERDUE', label: '逾期提醒' },
   { value: 'PICKUP', label: '取件提醒' },
@@ -25,6 +27,8 @@ export const CHANNEL_MODE_OPTIONS = [
 ]
 
 const NOTIFY_TYPE_TAGS = {
+  RESERVATION_SUCCESS: 'success',
+  REPAIR_CONFIRM: 'primary',
   RENTAL_DUE: 'warning',
   OVERDUE: 'danger',
   PICKUP: 'primary',

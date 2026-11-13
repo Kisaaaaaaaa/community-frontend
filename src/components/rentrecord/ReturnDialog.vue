@@ -27,7 +27,7 @@
       <div class="info-row" v-if="overdueDays > 0">
         <span class="info-label" style="color: var(--el-color-danger)">预计逾期</span>
         <span class="info-value" style="color: var(--el-color-danger)">
-          {{ overdueDays }} 天（系统自动计算：¥{{ autoOverdueFee.toFixed(2) }}）
+          {{ overdueDays }} 天（按押金 10%/天计算：¥{{ autoOverdueFee.toFixed(2) }}）
         </span>
       </div>
     </div>
@@ -67,7 +67,7 @@
           placeholder="留空则由系统自动计算"
           style="width: 100%"
         />
-        <div class="form-tip">留空时系统将按 20 元/天自动计算（不超过押金 ¥{{ formatAmount(row?.depositAmount) }}）</div>
+        <div class="form-tip">留空时系统将按押金的 10%/天自动计算（最多不超过押金 ¥{{ formatAmount(row?.depositAmount) }}）</div>
       </el-form-item>
       <el-form-item label="验收备注">
         <el-input
@@ -130,11 +130,12 @@ const overdueDays = computed(() => {
   return diffDays > 0 ? diffDays : 0
 })
 
-// 系统自动计算的逾期费用预估（20元/天，封顶押金）
+// 系统自动计算的逾期费用预估（押金的 10%/天，封顶押金）
+const OVERDUE_FEE_RATE = 0.1
 const autoOverdueFee = computed(() => {
   if (overdueDays.value <= 0) return 0
-  const fee = overdueDays.value * 20
   const deposit = Number(props.row?.depositAmount || 0)
+  const fee = overdueDays.value * deposit * OVERDUE_FEE_RATE
   return Math.min(fee, deposit)
 })
 

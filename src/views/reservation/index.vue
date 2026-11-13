@@ -24,8 +24,8 @@
         <div class="res-card__head">
           <div class="res-card__title">
             <span class="tool-name" :title="item.toolName">{{ item.toolName || '工具' }}</span>
-            <el-tag :type="reservationStatusTag(item.status)" effect="light" size="small">
-              {{ reservationStatusLabel(item.status) }}
+            <el-tag :type="displayStatusTag(item)" effect="light" size="small">
+              {{ displayStatusLabel(item) }}
             </el-tag>
           </div>
           <span class="order-no">{{ item.orderNo }}</span>
@@ -72,7 +72,7 @@
         <div class="res-card__footer">
           <el-button class="btn-accessible" @click="goDetail(item)">查看详情</el-button>
           <el-button
-            v-if="item.status === 'WAIT_PAY'"
+            v-if="item.status === 'WAIT_PAY' && !isPayExpired(item.payDeadline)"
             type="primary"
             class="btn-accessible"
             @click="openPay(item)"
@@ -80,7 +80,14 @@
             立即缴费
           </el-button>
           <el-button
-            v-if="canCancel(item.status)"
+            v-else-if="item.status === 'WAIT_PAY'"
+            class="btn-accessible"
+            disabled
+          >
+            已超时释放
+          </el-button>
+          <el-button
+            v-if="canCancel(item.status) && !isPayExpired(item.payDeadline)"
             type="danger"
             plain
             class="btn-accessible"
@@ -135,6 +142,7 @@ import {
   canCancel,
   depositStatusLabel,
   formatAmount,
+  isPayExpired,
   reservationStatusLabel,
   reservationStatusTag
 } from '@/utils/reservation'
@@ -193,6 +201,19 @@ function goDetail(item) {
 
 function goTools() {
   router.push('/tools')
+}
+
+// 待缴费但已过缴费截止：前端按「已超时」展示（预约已释放，不可再缴费）
+function displayStatusLabel(item) {
+  return item.status === 'WAIT_PAY' && isPayExpired(item.payDeadline)
+    ? '已超时'
+    : reservationStatusLabel(item.status)
+}
+
+function displayStatusTag(item) {
+  return item.status === 'WAIT_PAY' && isPayExpired(item.payDeadline)
+    ? 'danger'
+    : reservationStatusTag(item.status)
 }
 
 // 打开押金缴纳弹窗

@@ -42,16 +42,26 @@ export function createReservation(data) {
   })
 }
 
-// 4.3.4 押金缴纳（支付沙箱）
+// 4.3.4 押金缴纳（统一走支付宝真实沙箱）
 // 权限：resident（本人）
-// data：{ payChannel: 'SANDBOX' }；须携带 X-Idempotency-Key 请求头
-// 返回：{ orderNo, status: 'CONFIRMED', depositStatus: 'PAID', payTime }
-export function payDeposit(orderNo, data = { payChannel: 'SANDBOX' }) {
+// data：{ payChannel: 'ALIPAY' }；须携带 X-Idempotency-Key 请求头
+// 返回：{ orderNo, payNo, payChannel, amount, payUrl, payForm, payType, expireTime }
+export function payDeposit(orderNo, data = { payChannel: 'ALIPAY' }) {
   return request({
     url: `/reservations/${orderNo}/deposit/pay`,
     method: 'post',
     data,
     headers: { 'X-Idempotency-Key': genIdempotencyKey() }
+  })
+}
+
+// 查询押金支付/退款状态（ALIPAY 渠道支付完成后轮询用）
+// sync=true 时后端会主动向渠道对账（query 接口），兜底异步 notify 未到达的场景
+export function getDepositStatus(orderNo, sync = false) {
+  return request({
+    url: `/reservations/${orderNo}/deposit/status`,
+    method: 'get',
+    params: { sync: sync ? true : undefined }
   })
 }
 

@@ -5,7 +5,7 @@
       <div class="hero" :class="heroClass">
         <div class="hero__top">
           <el-tag class="hero__status" effect="dark" round>
-            {{ reservationStatusLabel(reservation.status) }}
+            {{ payExpired ? '已超时' : reservationStatusLabel(reservation.status) }}
           </el-tag>
           <div
             v-if="isWaitPay && reservation.payDeadline"
@@ -117,6 +117,9 @@
         <el-button v-if="canPay" type="primary" class="btn-accessible" @click="openPay">
           立即缴费
         </el-button>
+        <el-button v-else-if="payExpired" class="btn-accessible" disabled>
+          已超时释放
+        </el-button>
         <el-button
           v-if="canCancelStatus"
           type="danger"
@@ -182,9 +185,18 @@ const refundInfo = ref(null)
 const { payCountdown, deadlineClass } = usePaymentCountdown()
 
 const isWaitPay = computed(() => reservation.value?.status === 'WAIT_PAY')
+// 超时未缴费：预约已释放，不允许再缴费 / 取消（与后端 is_pay_expired 一致）
+// 借用 countdown 的每秒心跳，保证页面停留期间到点后按钮自动失效
+const payExpired = computed(
+  () => isWaitPay.value && deadlineClass(reservation.value?.payDeadline) === 'is-overdue'
+)
 // 押金缴纳仅居民本人可操作（4.3.4 权限为 resident）
-const canPay = computed(() => isWaitPay.value && userStore.role === 'RESIDENT')
-const canCancelStatus = computed(() => canCancel(reservation.value?.status))
+const canPay = computed(
+  () => isWaitPay.value && !payExpired.value && userStore.role === 'RESIDENT'
+)
+const canCancelStatus = computed(
+  () => canCancel(reservation.value?.status) && !payExpired.value
+)
 const isUrgent = computed(
   () => isWaitPay.value && deadlineClass(reservation.value?.payDeadline) === 'is-urgent'
 )

@@ -34,7 +34,7 @@
         class="config-tip"
       />
       <el-alert
-        title="租赁到期与取件提醒按提前量触发；逾期与维修完成提醒为即时触发。"
+        title="租赁到期与取件提醒按提前量触发；预约成功、报修确认、逾期与维修完成提醒为即时触发。"
         type="info"
         :closable="false"
         show-icon
@@ -93,7 +93,7 @@ import {
   notifyTypeTag
 } from '@/utils/notification'
 
-const IMMEDIATE_TYPES = ['OVERDUE', 'REPAIR_DONE']
+const IMMEDIATE_TYPES = ['RESERVATION_SUCCESS', 'REPAIR_CONFIRM', 'OVERDUE', 'REPAIR_DONE']
 
 const loading = ref(false)
 const saving = ref(false)

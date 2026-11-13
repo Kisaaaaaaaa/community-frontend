@@ -117,6 +117,17 @@ export function askAi(data) {
   })
 }
 
+// 预约助手对话（多步工具调用，可查询实时可约时段并创建预约）
+// data: { sessionId?, question }
+// 返回：{ sessionId, answerId, answer, sources, answerTime, steps, reservation }
+export function askAgent(data) {
+  return request({
+    url: '/ai/agent/chat',
+    method: 'post',
+    data
+  })
+}
+
 // 4.7.7 我的会话列表（全角色）
 export function getChatSessions(params) {
   return request({

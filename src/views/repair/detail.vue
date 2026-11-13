@@ -293,7 +293,7 @@
             <div class="fee-amount">¥{{ formatMoney(feePayment.amount) }}</div>
             <div class="fee-sub">
               <div>支付单号 <span class="mono">{{ feePayment.payNo }}</span></div>
-              <div>支付渠道 {{ feePayment.payChannel }}</div>
+              <div>支付渠道 {{ payChannelLabel(feePayment.payChannel) }}</div>
               <div>
                 状态
                 <el-tag :type="paymentOrderTagType(feePayment.status)" size="small" style="margin-left:6px">
@@ -310,10 +310,12 @@
               @click="fetchFeeStatus(true)"
             >刷新支付状态</el-button>
           </div>
-          <div v-if="feePayment.qrCode" class="fee-qr">
-            <div ref="qrBox" class="qr-wrapper"></div>
-            <a :href="feePayment.payUrl" target="_blank" class="pay-link">打开支付页面 →</a>
-            <div class="qr-tip">请使用支付宝扫描二维码完成支付</div>
+          <div v-if="feePayment.payUrl" class="fee-qr">
+            <el-button type="primary" round :icon="Grid" @click="payQrVisible = true">
+              显示支付二维码
+            </el-button>
+            <a :href="feePayment.payUrl" target="_blank" class="pay-link">在本机打开支付页面 →</a>
+            <div class="qr-tip">手机支付宝扫码完成支付</div>
           </div>
         </div>
       </div>
@@ -449,16 +451,26 @@
         <el-button type="primary" :loading="acceptSubmitting" @click="handleAccept">确认验收</el-button>
       </template>
     </el-dialog>
+
+    <!-- 大尺寸支付二维码：收银台链接较长，小尺寸二维码无法识别 -->
+    <PayQrDialog
+      v-if="feePayment"
+      v-model="payQrVisible"
+      :pay-url="feePayment.payUrl"
+      :pay-no="feePayment.payNo"
+      :amount="formatMoney(feePayment.amount)"
+      :expire-time="feePayment.expireTime"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, ref, onMounted, watch, nextTick } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   ArrowLeft, DocumentChecked, Edit, CircleCheckFilled, Money,
-  Box, Warning, Tools, Clock
+  Box, Warning, Tools, Clock, Grid
 } from '@element-plus/icons-vue'
 import {
   getRepairDetail,
@@ -476,6 +488,8 @@ import {
   FEE_STATUS
 } from '@/api/repair'
 import { useUserStore } from '@/store/user'
+import { payChannelLabel } from '@/utils/reservation'
+import PayQrDialog from '@/components/payment/PayQrDialog.vue'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -489,30 +503,7 @@ const detail = ref(null)
 const progressLogs = ref([])
 const feePayment = ref(null)
 const feeLoading = ref(false)
-const qrBox = ref(null)
-
-// 把支付宝预下单返回的支付 URL 渲染成二维码（qrcodejs 直接绘制到 DOM）
-function buildQr() {
-  const url = feePayment.value?.qrCode
-  if (!url || !qrBox.value) return
-  const QRCode = window.QRCode
-  if (!QRCode) { console.warn('qrcode 库未加载'); return }
-  // 清空后重新生成（qrcodejs 不会自动覆盖，先 innerHTML 清空）
-  qrBox.value.innerHTML = ''
-  new QRCode(qrBox.value, {
-    text: url,
-    width: 176,
-    height: 176,
-    colorDark: '#000000',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M,
-  })
-}
-watch(
-  () => feePayment.value?.qrCode,
-  () => nextTick(buildQr),
-  { immediate: true },
-)
+const payQrVisible = ref(false)
 
 // 弹窗状态
 const verifyVisible = ref(false)
@@ -1033,18 +1024,6 @@ onMounted(async () => {
   font-size: 14px;
 }
 .fee-qr { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
-.qr-wrapper {
-  width: 200px; height: 200px;
-  padding: 12px;
-  border: 1px solid var(--border-lighter);
-  border-radius: var(--radius-sm);
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.qr { width: 176px; height: 176px; display: block; }
-.qr-skeleton { width: 176px; height: 176px; }
 .pay-link { font-size: var(--font-size-sm); color: var(--color-primary); text-decoration: none; }
 .pay-link:hover { text-decoration: underline; }
 .qr-tip { font-size: var(--font-size-xs); color: var(--text-secondary); }

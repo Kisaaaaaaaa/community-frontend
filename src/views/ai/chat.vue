@@ -41,7 +41,7 @@
           </el-button>
           <div>
             <h2>{{ currentTitle }}</h2>
-            <p>基于社区工具知识库的智能问答，回答附带原文出处</p>
+            <p>可查询工具资料与租赁规则，也能查询实时可约时段并协助完成预约</p>
           </div>
         </div>
         <el-tag v-if="currentSessionId" round type="info" size="small">会话 #{{ currentSessionId }}</el-tag>
@@ -54,7 +54,7 @@
             <el-icon><ChatDotRound /></el-icon>
           </div>
           <h3>您好，我是社区工具助手</h3>
-          <p>可以问我工具的使用方法、安全注意事项、租赁与赔付规则等问题</p>
+          <p>可以问我工具的使用方法、安全注意事项、租赁与赔付规则，也可以直接让我帮您查询可约时段并预约工具</p>
           <div class="suggest-list">
             <button v-for="q in SUGGESTS" :key="q" class="suggest-item" @click="askSuggestion(q)">
               {{ q }}
@@ -70,7 +70,35 @@
           :class="msg.role === 'user' ? 'is-user' : 'is-assistant'"
         >
           <div class="bubble">
-            <div class="bubble-text">{{ msg.content }}</div>
+            <!-- 助手回答按 Markdown 渲染，用户提问保持纯文本 -->
+            <div
+              v-if="msg.role === 'assistant'"
+              class="bubble-text markdown-body"
+              v-html="renderMarkdown(msg.content)"
+            ></div>
+            <div v-else class="bubble-text">{{ msg.content }}</div>
+
+            <!-- 推荐时段：点击即可让 AI 按该时段继续预约 -->
+            <div
+              v-if="isResident && msg.role === 'assistant' && msg.slots && msg.slots.length"
+              class="slot-recommend"
+            >
+              <div class="slot-recommend-title">
+                <el-icon><Clock /></el-icon>
+                <span>推荐时段（点击直接选择该时段预约）</span>
+              </div>
+              <div class="slot-recommend-list">
+                <button
+                  v-for="slot in msg.slots"
+                  :key="slot.key"
+                  class="slot-chip"
+                  :disabled="sending"
+                  @click="chooseSlot(slot)"
+                >
+                  {{ slot.label }}
+                </button>
+              </div>
+            </div>
 
             <!-- 知识库来源 -->
             <div v-if="msg.sources && msg.sources.length" class="sources">
@@ -132,7 +160,9 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound, Clock, Collection, Plus, Promotion, Refresh } from '@element-plus/icons-vue'
-import { askAi, getChatMessages, getChatSessions } from '@/api/ai'
+import { askAgent, askAi, getChatMessages, getChatSessions } from '@/api/ai'
+import { useUserStore } from '@/store/user'
+import { renderMarkdown } from '@/utils/markdown'
 
 const SUGGESTS = [
   '冲击电钻怎么更换钻头？',
@@ -140,6 +170,8 @@ const SUGGESTS = [
   '工具损坏需要怎么赔偿？',
   '使用角磨机有哪些安全注意事项？'
 ]
+
+const userStore = useUserStore()
 
 const sessions = ref([])
 const sessionsLoading = ref(false)
@@ -153,6 +185,80 @@ const mobileSessionsOpen = ref(false)
 const messagesRef = ref(null)
 
 const formatScore = (score) => (typeof score === 'number' ? score.toFixed(2) : '—')
+
+const isResident = computed(() => userStore.role === 'RESIDENT')
+
+// 从 AI 回答中提取「推荐时段」，渲染为可点击的预约快捷入口
+const SLOT_HINT_RE =
+  /推荐(?:的)?(?:时段|时间)|可选时段|可用时段|可预约时段|空闲时段|以下时段|建议(?:时段|时间)|其他(?:时段|时间)/
+const CONFLICT_HINT_RE = /冲突|不可预约|已被预约|已被占用|时间段被占用/
+const SLOT_RE =
+  /(\d{4}-\d{2}-\d{2})\s*(\d{1,2}:\d{2})\s*(?:~|～|至|—|–|到)\s*(?:(\d{4}-\d{2}-\d{2})\s*)?(\d{1,2}:\d{2})/g
+
+function padTime(text) {
+  const [h, m] = text.split(':')
+  return `${String(h).padStart(2, '0')}:${m}`
+}
+
+function slotTs(text) {
+  return new Date(text.replace(' ', 'T')).getTime()
+}
+
+function extractSlots(content) {
+  const text = String(content || '')
+  if (!text) return []
+  // 优先只看「推荐时段」之后的内容，避免把用户原本冲突的时间也当成推荐
+  let scope = ''
+  const hintIndex = text.search(SLOT_HINT_RE)
+  if (hintIndex >= 0) scope = text.slice(hintIndex)
+  else if (CONFLICT_HINT_RE.test(text)) scope = text
+  if (!scope) return []
+
+  const seen = new Set()
+  const slots = []
+  let match
+  SLOT_RE.lastIndex = 0
+  while ((match = SLOT_RE.exec(scope))) {
+    const startDate = match[1]
+    const startTime = padTime(match[2])
+    const endDate = match[3] || startDate
+    const endTime = padTime(match[4])
+    const startText = `${startDate} ${startTime}`
+    const endText = `${endDate} ${endTime}`
+    const key = `${startText}~${endText}`
+    if (seen.has(key)) continue
+    if (!(slotTs(endText) > slotTs(startText))) continue
+    seen.add(key)
+    slots.push({
+      key,
+      label: startDate === endDate ? `${startText} ~ ${endTime}` : `${startText} ~ ${endText}`,
+      startText,
+      endText
+    })
+  }
+  return slots.slice(0, 6)
+}
+
+// 为助手消息附加推荐时段，历史消息与新回答保持一致
+function decorateMessage(msg) {
+  if (msg.role !== 'assistant') return msg
+  return { ...msg, slots: extractSlots(msg.content) }
+}
+
+function chooseSlot(slot) {
+  if (sending.value) return
+  question.value = `就选 ${slot.startText} ~ ${slot.endText}，请帮我预约`
+  send()
+}
+
+// 知识类问题（使用说明 / 规则咨询）走知识库问答；预约类操作走预约助手
+// 预约助手才带工具调用，能查实时可约时段、推荐替代时段并创建预约
+const KB_INTENT_RE =
+  /怎么|如何|怎样|为什么|注意事项|安全|规则|说明书|使用说明|操作步骤|教程|赔偿|损坏|报修|维修流程|押金标准|收费标准|需要交|要交|费用标准/
+
+function pickChatApi(text) {
+  return KB_INTENT_RE.test(text) ? askAi : askAgent
+}
 
 function scrollToBottom() {
   nextTick(() => {
@@ -185,7 +291,7 @@ async function loadMessages(sessionId) {
       const last = await getChatMessages(sessionId, { page: pages, pageSize: PAGE_SIZE })
       listData = last?.list || listData
     }
-    messages.value = listData
+    messages.value = listData.map(decorateMessage)
     scrollToBottom()
   } catch (e) {
     messages.value = []
@@ -237,19 +343,22 @@ async function send() {
   try {
     const payload = { question: text }
     if (currentSessionId.value) payload.sessionId = currentSessionId.value
-    const data = await askAi(payload)
+    // 预约类问题交给会调用工具的预约助手，才能拿到实时可约时段
+    const data = await pickChatApi(text)(payload)
 
     const isNew = !currentSessionId.value
     currentSessionId.value = data.sessionId
     if (isNew) currentTitle.value = text.slice(0, 100)
 
-    messages.value.push({
-      msgId: data.answerId,
-      role: 'assistant',
-      content: data.answer,
-      sources: data.sources || [],
-      createTime: data.answerTime
-    })
+    messages.value.push(
+      decorateMessage({
+        msgId: data.answerId,
+        role: 'assistant',
+        content: data.answer,
+        sources: data.sources || [],
+        createTime: data.answerTime
+      })
+    )
     await loadSessions(true)
     scrollToBottom()
   } catch (e) {
@@ -524,6 +633,118 @@ onMounted(async () => {
   line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 助手回答的 Markdown 样式 */
+.markdown-body {
+  white-space: normal;
+
+  :deep(p) {
+    margin: 0 0 8px;
+  }
+  :deep(p:last-child) {
+    margin-bottom: 0;
+  }
+  :deep(strong) {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  :deep(h3),
+  :deep(h4),
+  :deep(h5),
+  :deep(h6) {
+    margin: 12px 0 6px;
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  :deep(ul),
+  :deep(ol) {
+    margin: 6px 0;
+    padding-left: 20px;
+  }
+  :deep(li) {
+    margin: 2px 0;
+  }
+  :deep(code) {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background-color: rgba(64, 158, 255, 0.1);
+    color: var(--color-primary);
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+    font-size: 0.92em;
+  }
+  :deep(pre) {
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background-color: #f5f7fa;
+    overflow-x: auto;
+  }
+  :deep(pre code) {
+    padding: 0;
+    background: transparent;
+    color: var(--text-regular);
+  }
+  :deep(hr) {
+    margin: 12px 0;
+    border: none;
+    border-top: 1px solid var(--border-lighter);
+  }
+  :deep(a) {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  :deep(a:hover) {
+    text-decoration: underline;
+  }
+}
+
+/* 推荐时段卡片 */
+.slot-recommend {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(64, 158, 255, 0.45);
+  background-color: rgba(64, 158, 255, 0.06);
+}
+
+.slot-recommend-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.slot-recommend-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.slot-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
+  background-color: var(--card-bg-color);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    color: #fff;
+    background-color: var(--color-primary);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 }
 
 .msg-time {

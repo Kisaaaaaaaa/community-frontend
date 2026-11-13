@@ -58,16 +58,16 @@
         </el-select>
       </el-form-item>
       <el-form-item label="逾期费用">
-        <el-input-number
-          v-model="form.overdueFee"
-          :min="0"
-          :precision="2"
-          :step="10"
-          controls-position="right"
-          placeholder="留空则由系统自动计算"
-          style="width: 100%"
-        />
-        <div class="form-tip">留空时系统将按押金的 10%/天自动计算（最多不超过押金 ¥{{ formatAmount(row?.depositAmount) }}）</div>
+        <div class="auto-fee">
+          <span class="auto-fee-value" :class="{ 'is-danger': autoOverdueFee > 0 }">
+            ¥{{ autoOverdueFee.toFixed(2) }}
+          </span>
+          <span class="auto-fee-desc">
+            {{ overdueDays > 0
+              ? `逾期 ${overdueDays} 天，按押金 ¥${formatAmount(row?.depositAmount)} 的 10%/天自动计算（封顶押金）`
+              : '未逾期，无需缴纳逾期费' }}
+          </span>
+        </div>
       </el-form-item>
       <el-form-item label="验收备注">
         <el-input
@@ -110,7 +110,6 @@ const form = reactive({
   returnTime: '',
   acceptanceResult: 'INTACT',
   damageLevel: 1,
-  overdueFee: undefined,
   remark: ''
 })
 
@@ -159,7 +158,6 @@ watch(
       form.returnTime = currentTimeText()
       form.acceptanceResult = 'INTACT'
       form.damageLevel = 1
-      form.overdueFee = undefined
       form.remark = ''
       formRef.value?.clearValidate()
     }
@@ -177,11 +175,11 @@ async function handleSubmit() {
   form.returnTime = currentTimeText()
   submitting.value = true
   try {
+    // 逾期费不传，由后端按「押金 × 10% × 逾期天数」规则自动计算
     await confirmReturn(props.row.orderNo, {
       returnTime: form.returnTime,
       acceptanceResult: form.acceptanceResult,
       damageLevel: form.damageLevel,
-      overdueFee: form.overdueFee !== undefined && form.overdueFee !== null ? form.overdueFee : undefined,
       remark: form.remark || undefined
     })
     ElMessage.success('归还验收成功')
@@ -229,10 +227,26 @@ async function handleSubmit() {
   padding: 0 4px;
 }
 
-.form-tip {
+.auto-fee {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auto-fee-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+
+  &.is-danger {
+    color: var(--el-color-danger);
+  }
+}
+
+.auto-fee-desc {
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
-  margin-top: 4px;
 }
 
 .return-time-text {

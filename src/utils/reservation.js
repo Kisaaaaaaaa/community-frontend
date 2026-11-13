@@ -25,10 +25,12 @@ export function reservationStatusTag(value) {
   return STATUS_MAP[value]?.tag || 'info'
 }
 
-// 押金状态：UNPAID / PAID / REFUNDED / PART_REFUND
+// 押金状态：UNPAID / PAYING / PAID / REFUNDING / REFUNDED / PART_REFUND
 export const DEPOSIT_STATUS_LABELS = {
   UNPAID: '未缴纳',
+  PAYING: '支付中',
   PAID: '已缴纳',
+  REFUNDING: '退还处理中',
   REFUNDED: '已退还',
   PART_REFUND: '部分退还'
 }
@@ -48,6 +50,54 @@ export function refundStatusLabel(value) {
   return REFUND_STATUS_LABELS[value] || value || '-'
 }
 
+// ================== 支付单状态（PayOrderStatus） ==================
+// 用于押金支付单 payment.status
+export const PAY_ORDER_STATUS_LABELS = {
+  PENDING: '待支付',
+  PAID: '已支付',
+  CLOSED: '已关闭',
+  FAILED: '支付失败'
+}
+
+export function payOrderStatusLabel(value) {
+  return PAY_ORDER_STATUS_LABELS[value] || value || '-'
+}
+
+export function payOrderStatusTag(value) {
+  const map = { PAID: 'success', CLOSED: 'info', FAILED: 'danger' }
+  return map[value] || 'warning'
+}
+
+// ================== 维修费用支付状态（feeStatus） ==================
+export const FEE_STATUS_LABELS = {
+  UNPAID: '未支付',
+  PAYING: '支付中',
+  PAID: '已支付',
+  FAILED: '支付失败',
+  CLOSED: '已关闭',
+  REFUNDING: '退款中',
+  REFUNDED: '已退款'
+}
+
+export function feeStatusLabel(value) {
+  return FEE_STATUS_LABELS[value] || value || '-'
+}
+
+export function feeStatusTag(value) {
+  const map = { PAID: 'success', FAILED: 'danger', REFUNDED: 'info', CLOSED: 'info', PAYING: 'warning' }
+  return map[value] || 'info'
+}
+
+// ================== 支付渠道 ==================
+export const PAY_CHANNEL_LABELS = {
+  ALIPAY: '支付宝沙箱',
+  SANDBOX: '支付沙箱（模拟）'
+}
+
+export function payChannelLabel(value) {
+  return PAY_CHANNEL_LABELS[value] || value || '-'
+}
+
 // 金额格式化（保留两位小数）
 export function formatAmount(amount) {
   return amount === null || amount === undefined ? '-' : Number(amount).toFixed(2)
@@ -56,4 +106,20 @@ export function formatAmount(amount) {
 // 仅「待缴费」「已预约」两种状态允许取消（后端另有「取件前 24 小时」约束）
 export function canCancel(status) {
   return status === 'WAIT_PAY' || status === 'CONFIRMED'
+}
+
+// 解析后端返回的 "YYYY-MM-DD HH:mm(:ss)"（本地时区）
+function toTimestamp(value) {
+  if (!value) return NaN
+  const text = String(value).trim()
+  if (!text) return NaN
+  return new Date(text.includes('T') ? text : text.replace(' ', 'T')).getTime()
+}
+
+// 待缴费单是否已过缴费截止（与后端 Reservation.is_pay_expired 判定一致）
+// 超时后预约会被释放为 OVERDUE，不允许再缴费 / 取消
+export function isPayExpired(payDeadline) {
+  if (!payDeadline) return false
+  const ts = toTimestamp(payDeadline)
+  return Number.isFinite(ts) && Date.now() > ts
 }

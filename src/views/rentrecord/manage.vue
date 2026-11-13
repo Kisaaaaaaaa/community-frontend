@@ -23,6 +23,40 @@
             @clear="handleSearch"
           />
         </el-form-item>
+        <el-form-item label="存放区域">
+          <el-input
+            v-model="query.storageLocation"
+            placeholder="如 A区"
+            clearable
+            style="width: 130px"
+            @keyup.enter="handleSearch"
+            @clear="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="租赁次数">
+          <el-input-number
+            v-model="query.rentCountMin"
+            :min="0"
+            :precision="0"
+            :value-on-clear="null"
+            controls-position="right"
+            placeholder="≥ 次"
+            style="width: 120px"
+            @change="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item label="最近维修">
+          <el-date-picker
+            v-model="repairRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 230px"
+            @change="handleSearch"
+          />
+        </el-form-item>
         <el-form-item label="验收结果">
           <el-select
             v-model="query.acceptanceResult"
@@ -199,11 +233,12 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import { exportRecords, getManageRecords } from '@/api/rentrecord'
+import { getToolDetail, getToolList } from '@/api/tool'
 import PickupDialog from '@/components/rentrecord/PickupDialog.vue'
 import ReturnDialog from '@/components/rentrecord/ReturnDialog.vue'
 import {
@@ -226,30 +261,149 @@ const exporting = ref(false)
 const list = ref([])
 const total = ref(0)
 const dateRange = ref([])
+const repairRange = ref([])
 
 const query = reactive({
   renterName: '',
   toolCode: '',
+  storageLocation: '',
+  rentCountMin: null,
   acceptanceResult: '',
   overdueStatus: '',
   page: 1,
   pageSize: 10
 })
 
+// 工具维度筛选（后端租赁记录接口不支持，先取工具明细在前端关联过滤）
+const rentCountFiltered = () =>
+  query.rentCountMin !== null && query.rentCountMin !== undefined && query.rentCountMin !== ''
+
+const advancedActive = computed(
+  () =>
+    Boolean(query.storageLocation.trim()) ||
+    rentCountFiltered() ||
+    repairRange.value?.length === 2
+)
+
+// 工具编码 → { storageLocation, rentCount, lastRepairTime }
+const toolMetaMap = ref(new Map())
+let toolMetaLoading = null
+
+async function loadAllToolMeta() {
+  if (toolMetaMap.value.size) return toolMetaMap.value
+  if (!toolMetaLoading) {
+    toolMetaLoading = (async () => {
+      const codes = []
+      let page = 1
+      let pages = 1
+      do {
+        const data = await getToolList({ page, pageSize: 50 })
+        ;(data?.list || []).forEach((it) => codes.push(it.toolCode))
+        pages = data?.pages || 1
+        page += 1
+      } while (page <= pages)
+
+      const map = new Map()
+      let cursor = 0
+      // 控制并发，避免工具较多时瞬间打出过多请求
+      async function worker() {
+        while (cursor < codes.length) {
+          const code = codes[cursor]
+          cursor += 1
+          try {
+            const detail = await getToolDetail(code)
+            const tool = detail?.tool || {}
+            map.set(code, {
+              storageLocation: tool.storageLocation || '',
+              rentCount: Number(tool.rentCount || 0),
+              lastRepairTime: tool.lastRepairTime || ''
+            })
+          } catch {
+            map.set(code, { storageLocation: '', rentCount: 0, lastRepairTime: '' })
+          }
+        }
+      }
+      await Promise.all(
+        Array.from({ length: Math.min(5, codes.length) }, () => worker())
+      )
+      toolMetaMap.value = map
+      return map
+    })().finally(() => {
+      toolMetaLoading = null
+    })
+  }
+  return toolMetaLoading
+}
+
+function matchToolMeta(meta) {
+  if (!meta) return false
+  const area = query.storageLocation.trim().toLowerCase()
+  if (area && !String(meta.storageLocation).toLowerCase().includes(area)) return false
+  if (rentCountFiltered() && meta.rentCount < Number(query.rentCountMin)) return false
+  if (repairRange.value?.length === 2) {
+    if (!meta.lastRepairTime) return false
+    const day = String(meta.lastRepairTime).slice(0, 10).replace(/\//g, '-')
+    if (day < repairRange.value[0] || day > repairRange.value[1]) return false
+  }
+  return true
+}
+
+function buildBaseParams() {
+  const params = {}
+  if (query.renterName.trim()) params.renterName = query.renterName.trim()
+  if (query.toolCode.trim()) params.toolCode = query.toolCode.trim()
+  if (query.acceptanceResult) params.acceptanceResult = query.acceptanceResult
+  if (query.overdueStatus) params.overdueStatus = query.overdueStatus
+  if (dateRange.value?.length === 2) {
+    params.dateStart = dateRange.value[0]
+    params.dateEnd = dateRange.value[1]
+  }
+  return params
+}
+
+// 工具维度筛选生效时，先把符合基础条件的记录全部取回再本地过滤分页
+async function fetchAllRecords(baseParams) {
+  const PAGE_SIZE = 50
+  const MAX_PAGES = 40
+  const first = await getManageRecords({ ...baseParams, page: 1, pageSize: PAGE_SIZE })
+  let rows = first?.list || []
+  const pages = Math.min(first?.pages || 1, MAX_PAGES)
+  if (pages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: pages - 1 }, (_, i) =>
+        getManageRecords({ ...baseParams, page: i + 2, pageSize: PAGE_SIZE })
+      )
+    )
+    rest.forEach((data) => {
+      rows = rows.concat(data?.list || [])
+    })
+  }
+  return rows
+}
+
 // 4.4.5 租赁记录管理查询
 async function fetchList() {
   loading.value = true
   try {
-    const params = { page: query.page, pageSize: query.pageSize }
-    if (query.renterName.trim()) params.renterName = query.renterName.trim()
-    if (query.toolCode.trim()) params.toolCode = query.toolCode.trim()
-    if (query.acceptanceResult) params.acceptanceResult = query.acceptanceResult
-    if (query.overdueStatus) params.overdueStatus = query.overdueStatus
-    if (dateRange.value?.length === 2) {
-      params.dateStart = dateRange.value[0]
-      params.dateEnd = dateRange.value[1]
+    const baseParams = buildBaseParams()
+    if (advancedActive.value) {
+      const metaMap = await loadAllToolMeta()
+      const matched = new Set()
+      metaMap.forEach((meta, code) => {
+        if (matchToolMeta(meta)) matched.add(code)
+      })
+      const rows = matched.size ? await fetchAllRecords(baseParams) : []
+      const filtered = rows.filter((row) => matched.has(row.toolCode))
+      total.value = filtered.length
+      const start = (query.page - 1) * query.pageSize
+      list.value = filtered.slice(start, start + query.pageSize)
+      return
     }
-    const data = await getManageRecords(params)
+    const data = await getManageRecords({
+      ...baseParams,
+      page: query.page,
+      pageSize: query.pageSize
+    })
     list.value = data?.list || []
     total.value = data?.total || 0
   } finally {
@@ -270,9 +424,12 @@ function handleSizeChange() {
 function handleReset() {
   query.renterName = ''
   query.toolCode = ''
+  query.storageLocation = ''
+  query.rentCountMin = null
   query.acceptanceResult = ''
   query.overdueStatus = ''
   dateRange.value = []
+  repairRange.value = []
   query.page = 1
   fetchList()
 }
@@ -283,18 +440,12 @@ function goDetail(row) {
 
 // 4.4.7 导出 Excel
 async function handleExport() {
+  if (advancedActive.value) {
+    ElMessage.warning('导出暂不支持「存放区域 / 租赁次数 / 最近维修」条件，将按其余筛选条件导出')
+  }
   exporting.value = true
   try {
-    const params = {}
-    if (query.renterName.trim()) params.renterName = query.renterName.trim()
-    if (query.toolCode.trim()) params.toolCode = query.toolCode.trim()
-    if (query.acceptanceResult) params.acceptanceResult = query.acceptanceResult
-    if (query.overdueStatus) params.overdueStatus = query.overdueStatus
-    if (dateRange.value?.length === 2) {
-      params.dateStart = dateRange.value[0]
-      params.dateEnd = dateRange.value[1]
-    }
-    const blob = await exportRecords(params)
+    const blob = await exportRecords(buildBaseParams())
     // 构造文件名：租赁记录-yyyyMMdd.xlsx
     const today = new Date()
     const y = today.getFullYear()

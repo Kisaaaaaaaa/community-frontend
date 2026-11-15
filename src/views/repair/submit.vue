@@ -504,4 +504,28 @@ onMounted(() => {
   color: var(--text-secondary);
   margin-top: 4px;
 }
+
+@media (max-width: 768px) {
+  .page-hero {
+    padding: var(--space-lg) var(--space-md);
+    border-radius: var(--radius-md);
+
+    h1 {
+      font-size: 20px;
+    }
+  }
+
+  .picker-card {
+    padding: var(--space-md);
+  }
+
+  .picker-header {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .form-card {
+    padding: var(--space-md);
+  }
+}
 </style>

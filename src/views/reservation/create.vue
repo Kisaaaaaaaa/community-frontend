@@ -1128,6 +1128,16 @@ onMounted(fetchSlots)
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   }
 
+  .step-card {
+    padding: var(--space-md);
+  }
+
+  // 吸附提交栏需高于固定底部导航，避免被遮挡
+  .submit-bar {
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+    padding: var(--space-md);
+  }
+
   .submit-bar__actions {
     width: 100%;
 

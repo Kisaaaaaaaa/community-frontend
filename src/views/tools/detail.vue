@@ -122,7 +122,7 @@
           <span class="section-title__icon"><el-icon><Clock /></el-icon></span>
           历史租赁记录
         </h4>
-        <el-table v-if="rentalHistory.length" :data="rentalHistory" size="small" stripe>
+        <el-table v-if="rentalHistory.length && !isMobile" :data="rentalHistory" size="small" stripe>
           <el-table-column prop="orderNo" label="预约单号" min-width="170" />
           <el-table-column prop="renterName" label="租赁人" min-width="90" />
           <el-table-column prop="startTime" label="开始时间" min-width="140" />
@@ -140,6 +140,36 @@
             </template>
           </el-table-column>
         </el-table>
+
+        <!-- 移动端：卡片列表，避免宽表格横向滚动 -->
+        <div v-else-if="rentalHistory.length" class="mobile-list">
+          <div v-for="row in rentalHistory" :key="row.orderNo" class="mobile-card">
+            <div class="mc-head">
+              <span class="mc-title">{{ row.orderNo }}</span>
+              <el-tag
+                v-if="row.acceptanceResult"
+                :type="acceptanceResultTag(row.acceptanceResult)"
+                size="small"
+              >
+                {{ acceptanceResultLabel(row.acceptanceResult) }}
+              </el-tag>
+              <span v-else class="mc-muted">未验收</span>
+            </div>
+            <div class="mc-row">
+              <span class="mc-label">租赁人</span>
+              <span class="mc-value">{{ row.renterName || '-' }}</span>
+            </div>
+            <div class="mc-row">
+              <span class="mc-label">开始时间</span>
+              <span class="mc-value">{{ row.startTime || '-' }}</span>
+            </div>
+            <div class="mc-row">
+              <span class="mc-label">结束时间</span>
+              <span class="mc-value">{{ row.endTime || '-' }}</span>
+            </div>
+          </div>
+        </div>
+
         <el-empty v-else description="暂无租赁记录" :image-size="80" />
       </div>
 
@@ -152,7 +182,7 @@
           </h4>
           <el-button link type="primary" @click="loadLogs">刷新</el-button>
         </div>
-        <el-table v-loading="logsLoading" :data="logs.list" size="small" stripe>
+        <el-table v-if="!isMobile" v-loading="logsLoading" :data="logs.list" size="small" stripe>
           <el-table-column label="变更时间" min-width="140">
             <template #default="{ row }">{{ row.operateTime || '-' }}</template>
           </el-table-column>
@@ -173,6 +203,33 @@
             <template #default="{ row }">{{ row.operator || '-' }}</template>
           </el-table-column>
         </el-table>
+
+        <!-- 移动端：卡片列表 -->
+        <div v-else v-loading="logsLoading" class="mobile-list">
+          <div v-for="(row, index) in logs.list" :key="index" class="mobile-card">
+            <div class="mc-head">
+              <span class="mc-title">
+                {{ statusLabel(row.fromStatus) }}
+                <el-icon class="arrow-icon"><ArrowRight /></el-icon>
+                {{ statusLabel(row.toStatus) }}
+              </span>
+              <span class="mc-time">{{ row.operateTime || '-' }}</span>
+            </div>
+            <div class="mc-row">
+              <span class="mc-label">重估损坏程度</span>
+              <span class="mc-value">{{ row.damageLevel ? damageLabel(row.damageLevel) : '-' }}</span>
+            </div>
+            <div class="mc-row">
+              <span class="mc-label">操作人</span>
+              <span class="mc-value">{{ row.operator || '-' }}</span>
+            </div>
+            <div class="mc-row mc-row--block">
+              <span class="mc-label">变更原因</span>
+              <span class="mc-value">{{ row.reason || '-' }}</span>
+            </div>
+          </div>
+        </div>
+
         <el-empty v-if="!logsLoading && !logs.list.length" description="暂无状态变更记录" :image-size="80" />
         <div v-if="logs.total > 0" class="pagination-bar">
           <el-pagination
@@ -273,10 +330,12 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Clock, Document, Picture, Refresh } from '@element-plus/icons-vue'
 import { getToolDetail, getToolStatusLogs, updateToolStatus } from '@/api/tool'
 import { useUserStore } from '@/store/user'
+import { useAppStore } from '@/store/app'
 import {
   acceptanceResultLabel,
   acceptanceResultTag,
@@ -286,6 +345,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const { isMobile } = storeToRefs(useAppStore())
 
 const isStaffOrAdmin = computed(() => ['STAFF', 'ADMIN'].includes(userStore.role))
 
@@ -632,6 +692,83 @@ onMounted(loadDetail)
   margin-top: var(--space-md);
 }
 
+// ---- 移动端卡片列表（历史租赁 / 状态变更） ----
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 60px;
+}
+
+.mobile-card {
+  padding: var(--space-md);
+  border: 1px solid var(--border-lighter);
+  border-radius: var(--radius-md);
+  background-color: var(--app-bg-color);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border-lighter);
+}
+
+.mc-title {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.mc-time {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.mc-muted {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.mc-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: var(--font-size-sm);
+
+  &--block {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.mc-label {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.mc-value {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  color: var(--text-primary);
+  word-break: break-all;
+
+  .mc-row--block & {
+    text-align: left;
+  }
+}
+
 .form-input {
   width: 260px;
 }
@@ -652,6 +789,10 @@ onMounted(loadDetail)
 
   .tool-title {
     font-size: 20px;
+  }
+
+  .pagination-bar {
+    justify-content: center;
   }
 }
 </style>

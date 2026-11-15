@@ -41,7 +41,13 @@
 
       <!-- 流转进度 -->
       <div v-if="showSteps" class="card-box steps-card">
-        <el-steps :active="activeStep" align-center finish-status="success" process-status="finish">
+        <el-steps
+          :active="activeStep"
+          :simple="isMobile"
+          align-center
+          finish-status="success"
+          process-status="finish"
+        >
           <el-step title="提交预约" />
           <el-step title="缴纳押金" />
           <el-step title="取件使用" />
@@ -149,6 +155,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -163,6 +170,7 @@ import {
 import { cancelReservation, getReservationDetail } from '@/api/reservation'
 import DepositPayDialog from '@/components/reservation/DepositPayDialog.vue'
 import { usePaymentCountdown } from '@/composables/usePaymentCountdown'
+import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
 import {
   canCancel,
@@ -175,6 +183,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const { isMobile } = storeToRefs(useAppStore())
 
 const orderNo = computed(() => String(route.params.orderNo || ''))
 
@@ -619,22 +628,50 @@ onMounted(loadDetail)
 
 @media (max-width: 768px) {
   .hero {
+    padding: var(--space-lg) var(--space-md);
+
     &__name {
       font-size: 22px;
+    }
+
+    &__main {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    &__order {
+      flex-wrap: wrap;
+
+      .value {
+        word-break: break-all;
+      }
     }
 
     &__amount {
       align-items: flex-start;
       text-align: left;
+
+      .value {
+        font-size: 28px;
+      }
     }
+  }
+
+  .steps-card {
+    padding: var(--space-md) var(--space-sm);
   }
 
   .info-grid {
     grid-template-columns: 1fr;
   }
 
-  .action-bar .el-button {
-    flex: 1;
+  .action-bar {
+    padding: var(--space-md);
+
+    .el-button {
+      flex: 1;
+      margin-left: 0;
+    }
   }
 }
 </style>

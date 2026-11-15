@@ -52,3 +52,71 @@ $breakpoints: (
     display: none !important;
   }
 }
+
+// ============================================================
+// 移动端 Element Plus 统一适配
+// 由 useResponsive 在 <html> 上切换 .is-mobile，保证各页面表现一致
+// ============================================================
+html.is-mobile {
+  // 顶部导航栏略矮一些，为内容区留出更多空间
+  --header-height: 56px;
+
+  // 弹窗 / 消息框在窄屏下自适应，避免超出屏幕
+  .el-dialog {
+    width: calc(100vw - 32px) !important;
+    max-width: 560px;
+  }
+
+  .el-message-box {
+    width: calc(100vw - 48px) !important;
+    max-width: 420px;
+  }
+
+  .el-drawer {
+    max-width: 86vw;
+  }
+
+  // 内联筛选表单：移动端逐项占满一行，避免控件被挤压
+  .el-form--inline {
+    .el-form-item {
+      display: flex;
+      width: 100%;
+      margin-right: 0;
+      margin-bottom: 12px;
+    }
+
+    .el-form-item__content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .el-input,
+    .el-select,
+    .el-date-editor,
+    .el-input-number {
+      width: 100% !important;
+    }
+  }
+
+  // 分页：居中并允许换行，隐藏跳页与条数选择，避免横向溢出
+  .el-pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+    row-gap: 8px;
+
+    .el-pagination__sizes,
+    .el-pagination__jump {
+      display: none;
+    }
+  }
+
+  // 表格横向滑动更跟手
+  .el-table .el-scrollbar__wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  // 全局提示不超出屏幕
+  .el-message {
+    max-width: calc(100vw - 32px);
+  }
+}

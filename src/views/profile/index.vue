@@ -481,7 +481,7 @@ onUnmounted(() => window.removeEventListener('resize', syncResponsiveSizes))
 
 .hero-name {
   margin: var(--space-xs) 0 0;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   letter-spacing: 1px;
 }

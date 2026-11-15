@@ -11,11 +11,12 @@ const MOBILE_BREAKPOINT = 768
  */
 export function useResponsive() {
   const appStore = useAppStore()
-  const isMobile = ref(false)
+  // 初始化时直接按当前视口判断，避免移动端首屏先渲染出 PC 布局再切换造成闪动
+  const isMobile = ref(window.innerWidth <= MOBILE_BREAKPOINT)
 
   const update = () => {
     const width = window.innerWidth
-    isMobile.value = width < MOBILE_BREAKPOINT
+    isMobile.value = width <= MOBILE_BREAKPOINT
     appStore.setMobile(isMobile.value)
 
     // 给 <html> 添加 .is-mobile / .is-pc class，便于 CSS 条件样式
@@ -31,13 +32,16 @@ export function useResponsive() {
     timer = setTimeout(update, 100)
   }
 
+  // 首次渲染前同步应用，避免布局闪烁
+  update()
+
   onMounted(() => {
-    update()
     window.addEventListener('resize', onResize)
   })
 
   onUnmounted(() => {
     window.removeEventListener('resize', onResize)
+    clearTimeout(timer)
   })
 
   return { isMobile }

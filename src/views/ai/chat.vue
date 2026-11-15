@@ -871,7 +871,7 @@ onMounted(async () => {
 /* 响应式 */
 @media (max-width: 900px) {
   .ai-chat-page {
-    height: calc(100vh - var(--header-height) - 56px);
+    height: calc(100vh - var(--header-height) - var(--bottom-nav-height) - env(safe-area-inset-bottom));
     // 移动端高度有限，避免固定最小高度把输入区顶到下方导航栏之下
     min-height: 0;
   }
@@ -889,7 +889,7 @@ onMounted(async () => {
     position: fixed;
     top: var(--header-height);
     left: 0;
-    bottom: 56px;
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
     width: 76%;
     max-width: 320px;
     z-index: 1201;

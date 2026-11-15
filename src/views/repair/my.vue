@@ -29,8 +29,44 @@
       </el-form>
     </div>
 
-    <!-- 列表 -->
-    <div class="card-box">
+    <!-- 移动端：卡片列表，避免表格横向滚动 -->
+    <div v-if="isMobile" v-loading="loading" class="mobile-list">
+      <div v-for="row in list" :key="row.repairNo" class="mobile-card card-box">
+        <div class="mc-head">
+          <span class="mc-title" :title="row.toolName">{{ row.toolName || '工具' }}</span>
+          <el-tag :type="statusTagType(row.status)" size="small">
+            {{ repairStatusLabel(row.status) }}
+          </el-tag>
+        </div>
+        <div class="mc-order">{{ row.repairNo }}</div>
+        <div class="mc-row">
+          <span>损坏部位</span>
+          <span>{{ row.damagePart || '—' }}</span>
+        </div>
+        <div class="mc-row">
+          <span>维修进度</span>
+          <span>
+            <el-tag v-if="row.progressStatus" :type="progressTagType(row.progressStatus)" size="small">
+              {{ progressLabel(row.progressStatus) }}
+            </el-tag>
+            <span v-else class="muted">—</span>
+          </span>
+        </div>
+        <div class="mc-row">
+          <span>提交时间</span>
+          <span>{{ row.submitTime || '—' }}</span>
+        </div>
+        <div class="mc-actions">
+          <el-button size="small" type="primary" plain @click="goDetail(row.repairNo)">查看详情</el-button>
+        </div>
+      </div>
+      <el-empty v-if="!loading && !list.length" description="暂无报修记录">
+        <el-button type="primary" round :icon="Plus" @click="goSubmit">去提交报修</el-button>
+      </el-empty>
+    </div>
+
+    <!-- PC 端：表格 -->
+    <div v-else class="card-box">
       <el-table v-loading="loading" :data="list" stripe>
         <el-table-column prop="repairNo" label="报修单号" width="220" />
         <el-table-column prop="toolName" label="工具" min-width="160" show-overflow-tooltip />
@@ -62,25 +98,26 @@
           </el-empty>
         </template>
       </el-table>
+    </div>
 
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
-          background
-          @current-change="fetchList"
-          @size-change="handleSizeChange"
-        />
-      </div>
+    <div v-if="total > 0" class="pagination-wrap">
+      <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.pageSize"
+        :total="total"
+        :page-sizes="[10, 20, 50]"
+        layout="total, sizes, prev, pager, next, jumper"
+        background
+        @current-change="fetchList"
+        @size-change="handleSizeChange"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, reactive, ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -90,10 +127,12 @@ import {
   REPAIR_STATUS_OPTIONS,
   PROGRESS_STATUS_OPTIONS
 } from '@/api/repair'
+import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { isMobile } = storeToRefs(useAppStore())
 
 const loading = ref(false)
 const list = ref([])
@@ -180,7 +219,86 @@ onMounted(() => {
   margin-top: var(--space-md);
 }
 .muted { color: var(--text-placeholder); }
+
+// ================== 移动端卡片列表 ==================
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 160px;
+}
+
+.mobile-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  .mc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+  }
+
+  .mc-title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mc-order {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    word-break: break-all;
+  }
+
+  .mc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border-lighter);
+    font-size: var(--font-size-sm);
+
+    > span:first-child {
+      flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+
+    > span:last-child {
+      color: var(--text-primary);
+      text-align: right;
+      word-break: break-all;
+    }
+  }
+
+  .mc-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: var(--space-xs);
+  }
+}
+
 @media (max-width: 768px) {
-  .pagination-wrap { justify-content: center; }
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+
+    .el-button {
+      width: 100%;
+    }
+  }
+
+  .pagination-wrap {
+    justify-content: center;
+  }
 }
 </style>

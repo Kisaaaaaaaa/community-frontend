@@ -133,6 +133,21 @@ function openLink() {
   }
 }
 
+// 移动端：画布按容器自适应，避免 400px 固定宽度撑破手机屏幕
+@media (max-width: 768px) {
+  .qr-box {
+    width: 100%;
+    max-width: 320px;
+    box-sizing: border-box;
+
+    :deep(canvas) {
+      width: 100% !important;
+      height: auto !important;
+      max-width: 100%;
+    }
+  }
+}
+
 .qr-tip {
   margin: var(--space-sm) 0 0;
   text-align: center;

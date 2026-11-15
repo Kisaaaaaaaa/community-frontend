@@ -306,9 +306,22 @@ onMounted(fetchList)
 }
 
 @media (max-width: 768px) {
+  .filter-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+
+    .el-button {
+      width: 100%;
+    }
+  }
+
   .message-head {
     flex-direction: column;
     gap: var(--space-sm);
+  }
+
+  .message-content {
+    margin: var(--space-sm) 0;
   }
 
   .pagination-wrap {

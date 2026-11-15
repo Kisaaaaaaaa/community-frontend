@@ -242,4 +242,16 @@ async function handleLogin() {
   color: var(--text-secondary);
   margin-top: var(--space-md);
 }
+
+@media (max-width: 768px) {
+  .auth-page {
+    padding: var(--space-md);
+  }
+
+  .auth-card {
+    max-width: none;
+    padding: var(--space-lg) var(--space-md);
+    border-radius: var(--radius-md);
+  }
+}
 </style>

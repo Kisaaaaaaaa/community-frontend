@@ -30,8 +30,46 @@
       </el-form>
     </div>
 
-    <!-- 列表 -->
-    <div class="card-box table-card">
+    <!-- 移动端：卡片列表，避免多列表格横向滚动 -->
+    <div v-if="isMobile" v-loading="loading" class="mobile-list">
+      <div v-for="row in list" :key="row.orderNo" class="mobile-card card-box">
+        <div class="mc-head">
+          <span class="mc-title" :title="row.toolName">{{ row.toolName || '工具' }}</span>
+          <el-tag :type="recordStatusTag(row.status)" size="small">
+            {{ recordStatusLabel(row.status) }}
+          </el-tag>
+        </div>
+        <div class="mc-order">{{ row.orderNo }}</div>
+        <div class="mc-row">
+          <span>租赁时段</span>
+          <span>{{ shortDT(row.startTime) }} → {{ shortDT(row.endTime) }}</span>
+        </div>
+        <div class="mc-row">
+          <span>实际归还</span>
+          <span>{{ row.actualReturnTime ? shortDT(row.actualReturnTime) : '—' }}</span>
+        </div>
+        <div class="mc-row">
+          <span>押金</span>
+          <span class="deposit">¥{{ formatAmount(row.depositAmount) }}</span>
+        </div>
+        <div class="mc-actions">
+          <el-button size="small" type="primary" plain @click="goDetail(row)">查看详情</el-button>
+          <el-button
+            v-if="canUpdatePicker(row.status)"
+            size="small"
+            type="warning"
+            plain
+            @click="openPickerDialog(row)"
+          >
+            修改取件人
+          </el-button>
+        </div>
+      </div>
+      <el-empty v-if="!loading && !list.length" description="暂无租赁记录" />
+    </div>
+
+    <!-- PC 端：表格 -->
+    <div v-else class="card-box table-card">
       <el-table v-loading="loading" :data="list" stripe size="small" class="record-table">
         <el-table-column label="预约单号" min-width="148">
           <template #default="{ row }">
@@ -87,19 +125,19 @@
           <el-empty description="暂无租赁记录" />
         </template>
       </el-table>
+    </div>
 
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
-          background
-          @current-change="fetchList"
-          @size-change="handleSizeChange"
-        />
-      </div>
+    <div v-if="total > 0" class="pagination-wrap">
+      <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.pageSize"
+        :total="total"
+        :page-sizes="[10, 20, 50]"
+        layout="total, sizes, prev, pager, next, jumper"
+        background
+        @current-change="fetchList"
+        @size-change="handleSizeChange"
+      />
     </div>
 
     <!-- 修改取件人弹窗 -->
@@ -109,9 +147,11 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { getMyRecords } from '@/api/rentrecord'
 import PickerDialog from '@/components/rentrecord/PickerDialog.vue'
+import { useAppStore } from '@/store/app'
 import {
   RECORD_STATUS_OPTIONS,
   canUpdatePicker,
@@ -122,6 +162,7 @@ import {
 } from '@/utils/rentrecord'
 
 const router = useRouter()
+const { isMobile } = storeToRefs(useAppStore())
 
 const loading = ref(false)
 const list = ref([])
@@ -246,16 +287,93 @@ onMounted(fetchList)
   .text-muted {
     color: var(--text-placeholder);
   }
+}
 
-  .pagination-wrap {
+.pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-md);
+}
+
+// ================== 移动端卡片列表 ==================
+.mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 160px;
+}
+
+.mobile-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  .mc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+  }
+
+  .mc-title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mc-order {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    word-break: break-all;
+  }
+
+  .mc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border-lighter);
+    font-size: var(--font-size-sm);
+
+    > span:first-child {
+      flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+
+    > span:last-child {
+      color: var(--text-primary);
+      text-align: right;
+      word-break: break-all;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .deposit {
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  .mc-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: var(--space-md);
+    gap: var(--space-sm);
+    padding-top: var(--space-xs);
+
+    .el-button + .el-button {
+      margin-left: 0;
+    }
   }
 }
 
 @media (max-width: 768px) {
-  .table-card .pagination-wrap {
+  .pagination-wrap {
     justify-content: center;
   }
 }

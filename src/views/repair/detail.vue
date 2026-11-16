@@ -103,7 +103,7 @@
           <div class="kv-list">
             <div class="kv-item">
               <span class="kv-label">关联租赁单</span>
-              <span class="kv-value mono">{{ detail.relatedOrderNo }}</span>
+              <span class="kv-value mono">{{ detail.relatedOrderNo || '-' }}</span>
             </div>
             <div class="kv-item">
               <span class="kv-label">损坏部位</span>

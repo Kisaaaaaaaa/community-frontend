@@ -476,13 +476,17 @@ async function handleStatusSubmit() {
   }
   submitting.value = true
   try {
-    await updateToolStatus(toolCode.value, {
+    const result = await updateToolStatus(toolCode.value, {
       status: statusForm.status,
       reason: statusForm.reason.trim(),
       damageLevel: statusForm.damageLevel ?? undefined
     })
     statusVisible.value = false
-    ElMessage.success('工具状态已更新')
+    ElMessage.success(
+      result?.repairNo
+        ? `工具状态已更新，已自动创建维修工单 ${result.repairNo}`
+        : '工具状态已更新'
+    )
     logs.page = 1
     await loadDetail()
   } catch {

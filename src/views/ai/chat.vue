@@ -78,9 +78,65 @@
             ></div>
             <div v-else class="bubble-text">{{ msg.content }}</div>
 
+            <!-- 预约创建成功卡片：后端 agent 已完成 create_reservation -->
+            <div
+              v-if="msg.role === 'assistant' && msg.reservation"
+              class="reservation-created"
+            >
+              <div class="reservation-created__head">
+                <el-icon :size="16"><SuccessFilled /></el-icon>
+                <span>预约单已创建，请尽快完成押金支付</span>
+              </div>
+              <div class="reservation-created__body">
+                <div class="rc-row">
+                  <span class="rc-label">预约单号</span>
+                  <span class="rc-value mono">{{ msg.reservation.orderNo }}</span>
+                </div>
+                <div
+                  v-if="msg.reservation.toolName || msg.reservation.toolCode"
+                  class="rc-row"
+                >
+                  <span class="rc-label">工具</span>
+                  <span class="rc-value">{{ msg.reservation.toolName || msg.reservation.toolCode }}</span>
+                </div>
+                <div
+                  v-if="msg.reservation.startTime && msg.reservation.endTime"
+                  class="rc-row"
+                >
+                  <span class="rc-label">时段</span>
+                  <span class="rc-value mono">
+                    {{ msg.reservation.startTime }} ~ {{ msg.reservation.endTime }}
+                  </span>
+                </div>
+                <div class="rc-row">
+                  <span class="rc-label">押金</span>
+                  <span class="rc-value rc-value--strong">¥{{ formatAmount(msg.reservation.depositAmount) }}</span>
+                </div>
+                <div class="rc-row">
+                  <span class="rc-label">缴费截止</span>
+                  <span class="rc-value rc-value--warn">{{ msg.reservation.payDeadline }}</span>
+                </div>
+              </div>
+              <div class="reservation-created__actions">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="goReservationDetail(msg.reservation.orderNo)"
+                >
+                  去缴费
+                </el-button>
+                <el-button
+                  size="small"
+                  @click="goReservationDetail(msg.reservation.orderNo)"
+                >
+                  查看详情
+                </el-button>
+              </div>
+            </div>
+
             <!-- 推荐时段：点击即可让 AI 按该时段继续预约 -->
             <div
-              v-if="isResident && msg.role === 'assistant' && msg.slots && msg.slots.length"
+              v-if="isResident && msg.role === 'assistant' && msg.slots && msg.slots.length && !msg.reservation"
               class="slot-recommend"
             >
               <div class="slot-recommend-title">
@@ -129,6 +185,7 @@
 
       <footer class="chat-input">
         <el-input
+          ref="questionRef"
           v-model="question"
           type="textarea"
           :rows="2"
@@ -158,11 +215,15 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ChatDotRound, Clock, Collection, Plus, Promotion, Refresh } from '@element-plus/icons-vue'
+import { ChatDotRound, Clock, Collection, Plus, Promotion, Refresh, SuccessFilled } from '@element-plus/icons-vue'
 import { askAgent, askAi, getChatMessages, getChatSessions } from '@/api/ai'
 import { useUserStore } from '@/store/user'
 import { renderMarkdown } from '@/utils/markdown'
+import { formatAmount } from '@/utils/rentrecord'
+
+const router = useRouter()
 
 const SUGGESTS = [
   '冲击电钻怎么更换钻头？',
@@ -180,6 +241,7 @@ const messagesLoading = ref(false)
 const currentSessionId = ref(null)
 const currentTitle = ref('AI 问答助手')
 const question = ref('')
+const questionRef = ref(null)
 const sending = ref(false)
 const mobileSessionsOpen = ref(false)
 const messagesRef = ref(null)
@@ -190,10 +252,27 @@ const isResident = computed(() => userStore.role === 'RESIDENT')
 
 // 从 AI 回答中提取「推荐时段」，渲染为可点击的预约快捷入口
 const SLOT_HINT_RE =
-  /推荐(?:的)?(?:时段|时间)|可选时段|可用时段|可预约时段|空闲时段|以下时段|建议(?:时段|时间)|其他(?:时段|时间)/
+  /推荐(?:的)?(?:时段|时间|方案)|可选时段|可用时段|可预约时段|空闲时段|以下时段|建议(?:时段|时间)|其他(?:时段|时间)|近期空闲|空闲时间|推荐.*时段|推荐.*方案|推荐.*时间|可约时段|可约时间|可用时间|空闲时段如下/
 const CONFLICT_HINT_RE = /冲突|不可预约|已被预约|已被占用|时间段被占用/
+// 严格模式：完整日期 2026-11-17 09:00 ~ 2026-11-18 10:00
 const SLOT_RE =
   /(\d{4}-\d{2}-\d{2})\s*(\d{1,2}:\d{2})\s*(?:~|～|至|—|–|到)\s*(?:(\d{4}-\d{2}-\d{2})\s*)?(\d{1,2}:\d{2})/g
+// 宽松模式：用户输入里检测时间区间（月日简写也匹配）
+const USER_TIME_RANGE_RE =
+  /(\d{1,4}[-/]\d{1,2}(?:[-/]\d{1,2})?)\s*(\d{1,2}:\d{2})\s*(?:~|～|至|—|–|到|->|→)\s*(\d{1,4}[-/]\d{1,2}(?:[-/]\d{1,2})?\s*)?(\d{1,2}:\d{2})/
+// markdown 表格行：|11-16（今天）|17:00 – 22:00|
+const TABLE_SLOT_RE =
+  /\|\s*(\d{1,2})[-/](\d{1,2})(?:[^\d|]*)?\|\s*(\d{1,2}:\d{2})\s*(?:[-~～—–至到]|->|→)\s*(\d{1,2}:\d{2})\s*\|/g
+// 纯文本日期行：今天 11-16: 17:00-20:00、21:00-22:00
+// 先匹配行首的月日前缀，再匹配冒号后面的时段对
+const PLAIN_DATE_LINE_RE =
+  /(?:今天|明天|后天|大后天)?\s*(\d{1,2})[-/](\d{1,2})\s*[:：]/
+// 全天可约跨度行：11-18 至 11-22: 每天 06:00-22:00 全天可约
+const FULL_DAY_SPAN_RE =
+  /(\d{1,2})[-/](\d{1,2})\s*(?:至|到|～|~|—|–)\s*(\d{1,2})[-/](\d{1,2})\s*[:：].*?(\d{1,2}:\d{2})\s*[-~～—–至到]\s*(\d{1,2}:\d{2})/g
+// 推荐方案行：11-16 17:00 取件，11-16 20:00 归还
+const PLAN_RE =
+  /(\d{1,2})[-/](\d{1,2})\s+(\d{1,2}:\d{2}).*?(\d{1,2})[-/](\d{1,2})\s+(\d{1,2}:\d{2})/g
 
 function padTime(text) {
   const [h, m] = text.split(':')
@@ -204,10 +283,19 @@ function slotTs(text) {
   return new Date(text.replace(' ', 'T')).getTime()
 }
 
+// 把月日简写补全年份
+function resolveYear(month, day) {
+  const now = new Date()
+  let full = `${now.getFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  if (new Date(full + 'T00:00:00') < new Date(now.toDateString())) {
+    full = `${now.getFullYear() + 1}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+  return full
+}
+
 function extractSlots(content) {
   const text = String(content || '')
   if (!text) return []
-  // 优先只看「推荐时段」之后的内容，避免把用户原本冲突的时间也当成推荐
   let scope = ''
   const hintIndex = text.search(SLOT_HINT_RE)
   if (hintIndex >= 0) scope = text.slice(hintIndex)
@@ -216,43 +304,125 @@ function extractSlots(content) {
 
   const seen = new Set()
   const slots = []
-  let match
-  SLOT_RE.lastIndex = 0
-  while ((match = SLOT_RE.exec(scope))) {
-    const startDate = match[1]
-    const startTime = padTime(match[2])
-    const endDate = match[3] || startDate
-    const endTime = padTime(match[4])
-    const startText = `${startDate} ${startTime}`
-    const endText = `${endDate} ${endTime}`
+  const push = (startText, endText) => {
     const key = `${startText}~${endText}`
-    if (seen.has(key)) continue
-    if (!(slotTs(endText) > slotTs(startText))) continue
+    if (seen.has(key)) return
+    if (!(slotTs(endText) > slotTs(startText))) return
     seen.add(key)
+    const startDate = startText.slice(0, 10)
+    const endDate = endText.slice(0, 10)
+    const startTime = startText.slice(11)
+    const endTime = endText.slice(11)
     slots.push({
       key,
-      label: startDate === endDate ? `${startText} ~ ${endTime}` : `${startText} ~ ${endText}`,
+      label: startDate === endDate
+        ? `${startDate} ${startTime} ~ ${endTime}`
+        : `${startText} ~ ${endText}`,
       startText,
       endText
     })
   }
-  return slots.slice(0, 6)
+
+  // 1) 完整日期格式：2026-11-17 09:00 ~ 2026-11-18 10:00
+  SLOT_RE.lastIndex = 0
+  let m
+  while ((m = SLOT_RE.exec(scope))) {
+    const startDate = m[1]
+    const startTime = padTime(m[2])
+    const endDate = m[3] || startDate
+    const endTime = padTime(m[4])
+    push(`${startDate} ${startTime}`, `${endDate} ${endTime}`)
+  }
+
+  // 2) markdown 表格行：|11-16（今天）|17:00 – 22:00|
+  TABLE_SLOT_RE.lastIndex = 0
+  while ((m = TABLE_SLOT_RE.exec(scope))) {
+    const date = resolveYear(m[1], m[2])
+    push(`${date} ${padTime(m[3])}`, `${date} ${padTime(m[4])}`)
+  }
+
+  // 3) 全天可约跨度：11-18 至 11-22: 每天 06:00-22:00
+  // 展开为每天的 06:00~22:00
+  FULL_DAY_SPAN_RE.lastIndex = 0
+  while ((m = FULL_DAY_SPAN_RE.exec(scope))) {
+    const sm = parseInt(m[1], 10)
+    const sd = parseInt(m[2], 10)
+    const em = parseInt(m[3], 10)
+    const ed = parseInt(m[4], 10)
+    const startTime = padTime(m[5])
+    const endTime = padTime(m[6])
+    const sy = resolveYear(sm, sd).slice(0, 4)
+    const ey = resolveYear(em, ed).slice(0, 4)
+    let cur = new Date(sy, sm - 1, sd)
+    const end = new Date(ey, em - 1, ed)
+    while (cur <= end) {
+      const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+      push(`${dateStr} ${startTime}`, `${dateStr} ${endTime}`)
+      cur.setDate(cur.getDate() + 1)
+    }
+  }
+
+  // 4) 纯文本日期行：今天 11-16: 17:00-20:00、21:00-22:00
+  const lines = scope.split('\n')
+  for (const line of lines) {
+    const lineMatch = PLAIN_DATE_LINE_RE.exec(line)
+    if (!lineMatch) continue
+    const date = resolveYear(lineMatch[1], lineMatch[2])
+    // 提取这行里所有的 "HH:MM-HH:MM" 时段对
+    const TIME_PAIR_RE = /(\d{1,2}:\d{2})\s*[-~～—–至到]\s*(\d{1,2}:\d{2})/g
+    let tp
+    while ((tp = TIME_PAIR_RE.exec(line))) {
+      push(`${date} ${padTime(tp[1])}`, `${date} ${padTime(tp[2])}`)
+    }
+  }
+
+  // 5) 推荐方案行：11-16 17:00 取件，11-16 20:00 归还
+  PLAN_RE.lastIndex = 0
+  while ((m = PLAN_RE.exec(scope))) {
+    const startDate = resolveYear(m[1], m[2])
+    const startTime = padTime(m[3])
+    const endDate = resolveYear(m[4], m[5])
+    const endTime = padTime(m[6])
+    push(`${startDate} ${startTime}`, `${endDate} ${endTime}`)
+  }
+
+  return slots.slice(0, 8)
 }
 
-// 为助手消息附加推荐时段，历史消息与新回答保持一致
-function decorateMessage(msg) {
+// 为助手消息附加推荐时段与预约单信息
+function decorateMessage(msg, reservation) {
   if (msg.role !== 'assistant') return msg
-  return { ...msg, slots: extractSlots(msg.content) }
+  return {
+    ...msg,
+    slots: extractSlots(msg.content),
+    reservation: reservation || null
+  }
 }
 
+// 点击推荐时段 chip：自动发送指令让 agent 校验并直接下单。
+// 这些时段是 agent 刚通过 list_available_slots 查出来的可约空闲时段，
+// 用户点击 = 确认选择，agent 只需再做一次 check_availability 兜底校验，
+// 通过后立即 create_reservation 下单，不走二次确认流程。
 function chooseSlot(slot) {
   if (sending.value) return
-  question.value = `就选 ${slot.startText} ~ ${slot.endText}，请帮我预约`
+  question.value =
+    `就选 ${slot.startText} ~ ${slot.endText} 这个时段。` +
+    `请你调用 check_availability 再次校验，校验通过后立即 create_reservation 下单。`
   send()
 }
 
-// 知识类问题（使用说明 / 规则咨询）走知识库问答；预约类操作走预约助手
-// 预约助手才带工具调用，能查实时可约时段、推荐替代时段并创建预约
+// 跳转到预约详情页（orderNo 在路径 params 中）
+function goReservationDetail(orderNo) {
+  router.push({
+    name: 'ReservationDetail',
+    params: { orderNo }
+  })
+}
+
+// 预约意图：只有匹配到"租/借/预约/订/租个/借个"这类词才会让 agent 先查可约时段
+const RESERVATION_INTENT_RE =
+  /租|借|预约|订|租个|借个|想租|想借|要租|要借|帮我租|帮我借|借一下|租一下|租用|租赁/
+// 知识类问题走知识库问答；否则都走会工具调用的预约助手
 const KB_INTENT_RE =
   /怎么|如何|怎样|为什么|注意事项|安全|规则|说明书|使用说明|操作步骤|教程|赔偿|损坏|报修|维修流程|押金标准|收费标准|需要交|要交|费用标准/
 
@@ -291,7 +461,7 @@ async function loadMessages(sessionId) {
       const last = await getChatMessages(sessionId, { page: pages, pageSize: PAGE_SIZE })
       listData = last?.list || listData
     }
-    messages.value = listData.map(decorateMessage)
+    messages.value = listData.map((m) => decorateMessage(m))
     scrollToBottom()
   } catch (e) {
     messages.value = []
@@ -329,7 +499,7 @@ async function send() {
   const text = question.value.trim()
   if (!text || sending.value) return
 
-  // 乐观插入用户消息
+  // 乐观插入用户消息（气泡里显示用户原文）
   messages.value.push({
     msgId: `local-${Date.now()}`,
     role: 'user',
@@ -341,9 +511,12 @@ async function send() {
   scrollToBottom()
 
   try {
+    // 用户说什么就原样发给 agent，不追加任何提示。
+    // agent 自身 prompt 已经能做到：
+    //   - 只说"想租XX"不带时间 → 自动调用 list_available_slots 推荐时段
+    //   - 带具体时间 → check_availability 校验 → 让用户确认 → 下单
     const payload = { question: text }
     if (currentSessionId.value) payload.sessionId = currentSessionId.value
-    // 预约类问题交给会调用工具的预约助手，才能拿到实时可约时段
     const data = await pickChatApi(text)(payload)
 
     const isNew = !currentSessionId.value
@@ -351,13 +524,16 @@ async function send() {
     if (isNew) currentTitle.value = text.slice(0, 100)
 
     messages.value.push(
-      decorateMessage({
-        msgId: data.answerId,
-        role: 'assistant',
-        content: data.answer,
-        sources: data.sources || [],
-        createTime: data.answerTime
-      })
+      decorateMessage(
+        {
+          msgId: data.answerId,
+          role: 'assistant',
+          content: data.answer,
+          sources: data.sources || [],
+          createTime: data.answerTime
+        },
+        data.reservation
+      )
     )
     await loadSessions(true)
     scrollToBottom()
@@ -698,6 +874,104 @@ onMounted(async () => {
   :deep(a:hover) {
     text-decoration: underline;
   }
+  :deep(.md-table) {
+    width: 100%;
+    margin: 8px 0;
+    border-collapse: collapse;
+    font-size: var(--font-size-xs);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-lighter);
+  }
+  :deep(.md-table thead) {
+    background-color: rgba(64, 158, 255, 0.08);
+  }
+  :deep(.md-table th) {
+    padding: 6px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-lighter);
+    white-space: nowrap;
+  }
+  :deep(.md-table td) {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-lighter);
+    color: var(--text-regular);
+  }
+  :deep(.md-table tbody tr:last-child td) {
+    border-bottom: none;
+  }
+  :deep(.md-table tbody tr:hover td) {
+    background-color: rgba(64, 158, 255, 0.04);
+  }
+}
+
+/* 预约创建成功卡片 */
+.reservation-created {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(103, 194, 58, 0.35);
+  background-color: rgba(103, 194, 58, 0.08);
+}
+
+.reservation-created__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-success, #67c23a);
+}
+
+.reservation-created__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.rc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
+}
+
+.rc-label {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.rc-value {
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-all;
+
+  &.mono {
+    font-variant-numeric: tabular-nums;
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+  }
+
+  &--strong {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    color: var(--color-warning, #e6a23c);
+  }
+
+  &--warn {
+    color: var(--color-danger, #f56c6c);
+    font-weight: 500;
+  }
+}
+
+.reservation-created__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 /* 推荐时段卡片 */

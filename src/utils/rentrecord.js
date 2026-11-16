@@ -81,7 +81,8 @@ export function refundStatusLabel(status) {
   const map = {
     PROCESSING: '处理中',
     REFUNDED: '已退还',
-    PART_REFUND: '部分退还'
+    PART_REFUND: '部分退还',
+    FAILED: '退还失败'
   }
   return map[status] || status || '-'
 }

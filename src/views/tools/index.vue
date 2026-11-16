@@ -345,8 +345,13 @@ const isAdmin = computed(() => userStore.role === 'ADMIN')
 const isStaff = computed(() => userStore.role === 'STAFF')
 const isResident = computed(() => userStore.role === 'RESIDENT')
 
-// 仅居民可对「可用」工具发起预约（4.3.3）
-const canBook = (tool) => isResident.value && tool.status === 'AVAILABLE'
+// 居民可对「已审核通过且非维修中/报废」的工具发起预约（4.3.1/4.3.3）
+// 后端仅 REPAIRING / SCRAPPED 两种状态不可预约；AVAILABLE / RESERVED / RENTED 只要时段不冲突均可
+const NON_RESERVABLE_STATUSES = ['REPAIRING', 'SCRAPPED']
+const canBook = (tool) =>
+  isResident.value &&
+  tool.auditStatus === 'APPROVED' &&
+  !NON_RESERVABLE_STATUSES.includes(tool.status)
 
 function goBooking(tool) {
   router.push({

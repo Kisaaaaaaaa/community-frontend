@@ -47,6 +47,14 @@
           </el-radio>
         </el-radio-group>
       </el-form-item>
+      <div v-if="isSevere" class="severe-tip">
+        <el-alert
+          type="warning"
+          :closable="false"
+          show-icon
+          :title="`严重损坏：将扣除全部剩余押金 ¥${depositAfterOverdue.toFixed(2)}（押金 ¥${formatAmount(row?.depositAmount)} - 逾期费 ¥${autoOverdueFee.toFixed(2)}），应退 ¥0.00；归还后工具状态将转为「维修中」`"
+        />
+      </div>
       <el-form-item label="损坏程度" prop="damageLevel">
         <el-select v-model="form.damageLevel" placeholder="请选择" style="width: 100%">
           <el-option
@@ -138,6 +146,12 @@ const autoOverdueFee = computed(() => {
   return Math.min(fee, deposit)
 })
 
+// 严重损坏：后端默认扣除全部剩余押金（押金 - 逾期费），工具转为维修中
+const isSevere = computed(() => form.acceptanceResult === 'SEVERE')
+const depositAfterOverdue = computed(() =>
+  Math.max(0, Number(props.row?.depositAmount || 0) - autoOverdueFee.value)
+)
+
 // 读取当前时间（格式 YYYY-MM-DD HH:mm）
 function currentTimeText() {
   const now = new Date()
@@ -176,13 +190,17 @@ async function handleSubmit() {
   submitting.value = true
   try {
     // 逾期费不传，由后端按「押金 × 10% × 逾期天数」规则自动计算
-    await confirmReturn(props.row.orderNo, {
+    const result = await confirmReturn(props.row.orderNo, {
       returnTime: form.returnTime,
       acceptanceResult: form.acceptanceResult,
       damageLevel: form.damageLevel,
       remark: form.remark || undefined
     })
-    ElMessage.success('归还验收成功')
+    ElMessage.success(
+      result?.repairNo
+        ? `归还验收成功，已自动创建维修工单 ${result.repairNo}`
+        : '归还验收成功'
+    )
     emit('update:visible', false)
     emit('success')
   } catch {
@@ -225,6 +243,10 @@ async function handleSubmit() {
 
 .return-form {
   padding: 0 4px;
+}
+
+.severe-tip {
+  margin: 0 0 18px 110px;
 }
 
 .auto-fee {

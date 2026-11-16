@@ -254,12 +254,14 @@
     <el-dialog v-model="statusVisible" title="变更工具状态" width="520px" destroy-on-close>
       <el-alert
         v-if="tool"
-        :type="tool.status === 'RENTED' ? 'warning' : 'info'"
+        :type="tool.status === 'RENTED' || tool.status === 'REPAIRING' ? 'warning' : 'info'"
         :closable="false"
         show-icon
         :title="tool.status === 'RENTED'
           ? '工具处于租赁中，归还验收前不可手动变更状态'
-          : `当前状态：${statusLabel(tool.status)}`"
+          : tool.status === 'REPAIRING'
+            ? '维修中的工具需先结清维修费用才可改出；手动改出会自动关闭维修工单，待核验等其他未完结工单需先处理'
+            : `当前状态：${statusLabel(tool.status)}`"
         class="mb-md"
       />
       <el-form
@@ -476,13 +478,19 @@ async function handleStatusSubmit() {
   }
   submitting.value = true
   try {
-    await updateToolStatus(toolCode.value, {
+    const result = await updateToolStatus(toolCode.value, {
       status: statusForm.status,
       reason: statusForm.reason.trim(),
       damageLevel: statusForm.damageLevel ?? undefined
     })
     statusVisible.value = false
-    ElMessage.success('工具状态已更新')
+    ElMessage.success(
+      result?.closedRepairNo
+        ? `工具状态已更新，已自动关闭维修工单 ${result.closedRepairNo}`
+        : result?.repairNo
+          ? `工具状态已更新，已自动创建维修工单 ${result.repairNo}`
+          : '工具状态已更新'
+    )
     logs.page = 1
     await loadDetail()
   } catch {
